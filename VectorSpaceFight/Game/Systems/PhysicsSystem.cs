@@ -31,7 +31,8 @@ public static class PhysicsSystem
         ship.Position += ship.Velocity * dt;
 
         ship.FireCooldown -= dt;
-        if (input.Shoot && ship.FireCooldown <= 0f)
+        if (input.Shoot && ship.FireCooldown <= 0f &&
+            CountActiveBullets(bullets, ship.PlayerIndex) < GameConstants.MaxActiveBulletsPerPlayer)
         {
             var bullet = GetInactiveBullet(bullets);
             var muzzle = ship.Position + ship.Facing * 16f;
@@ -71,6 +72,18 @@ public static class PhysicsSystem
             asteroid.Position += asteroid.Velocity * dt;
             asteroid.Rotation += asteroid.RotationSpeed * dt;
         }
+    }
+
+    private static int CountActiveBullets(List<Bullet> bullets, int ownerIndex)
+    {
+        int count = 0;
+        foreach (var bullet in bullets)
+        {
+            if (bullet.Active && bullet.OwnerIndex == ownerIndex)
+                count++;
+        }
+
+        return count;
     }
 
     private static Bullet GetInactiveBullet(List<Bullet> bullets)

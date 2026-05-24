@@ -19,10 +19,61 @@ public class CollisionSystem
 
     public void Update(Ship[] ships, List<Bullet> bullets, List<Asteroid> asteroids)
     {
+        ResolveAsteroidAsteroid(asteroids);
         ResolveBulletAsteroid(bullets, asteroids);
         ResolveBulletShip(ships, bullets);
         ResolveShipAsteroid(ships, asteroids);
         ResolveShieldAsteroid(ships, asteroids);
+    }
+
+    private void ResolveAsteroidAsteroid(List<Asteroid> asteroids)
+    {
+        const float restitution = 0.88f;
+
+        for (int i = 0; i < asteroids.Count; i++)
+        {
+            var a = asteroids[i];
+            if (!a.Active)
+                continue;
+
+            for (int j = i + 1; j < asteroids.Count; j++)
+            {
+                var b = asteroids[j];
+                if (!b.Active)
+                    continue;
+
+                var delta = b.Position - a.Position;
+                float minDist = a.Radius + b.Radius;
+                float distSq = delta.LengthSquared();
+                if (distSq >= minDist * minDist)
+                    continue;
+
+                float dist = MathF.Sqrt(distSq);
+                var normal = dist > 0.001f ? delta / dist : RandomUnitNormal();
+
+                float overlap = minDist - dist;
+                float massA = GameConstants.GetAsteroidMass(a.Size);
+                float massB = GameConstants.GetAsteroidMass(b.Size);
+                float totalMass = massA + massB;
+                a.Position -= normal * overlap * (massB / totalMass);
+                b.Position += normal * overlap * (massA / totalMass);
+
+                var relativeVelocity = b.Velocity - a.Velocity;
+                float velocityAlongNormal = Vector2.Dot(relativeVelocity, normal);
+                if (velocityAlongNormal > 0f)
+                    continue;
+
+                float impulse = -(1f + restitution) * velocityAlongNormal / (1f / massA + 1f / massB);
+                a.Velocity -= normal * impulse / massA;
+                b.Velocity += normal * impulse / massB;
+            }
+        }
+    }
+
+    private static Vector2 RandomUnitNormal()
+    {
+        float angle = (float)(Random.Shared.NextDouble() * MathF.Tau);
+        return new Vector2(MathF.Cos(angle), MathF.Sin(angle));
     }
 
     private void ResolveBulletAsteroid(List<Bullet> bullets, List<Asteroid> asteroids)
@@ -131,6 +182,7 @@ public class CollisionSystem
         if (asteroid.Size == AsteroidSize.Small)
         {
             _debrisSystem.SpawnAsteroidDebris(_debris, asteroid, impactDirection);
+            _asteroidSpawner.NotifyAsteroidDestroyed(asteroids, asteroid);
             asteroid.Active = false;
             return;
         }

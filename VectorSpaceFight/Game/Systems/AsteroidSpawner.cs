@@ -7,15 +7,19 @@ namespace VectorSpaceFight.Game.Systems;
 public class AsteroidSpawner
 {
     private readonly Random _random = new();
+    private readonly Dictionary<int, int> _lineagePieceCount = new();
     private float _trickleTimer;
+    private int _nextLineageId = 1;
 
     public void Reset(List<Asteroid> asteroids)
     {
         asteroids.Clear();
+        _lineagePieceCount.Clear();
+        _nextLineageId = 1;
         _trickleTimer = GameConstants.AsteroidSpawnInterval;
 
         for (int i = 0; i < GameConstants.InitialLargeAsteroids; i++)
-            SpawnAsteroid(asteroids, AsteroidSize.Large, GetSafeSpawnPosition());
+            SpawnLargeAsteroid(asteroids, GetSafeSpawnPosition(), null);
     }
 
     public void Update(List<Asteroid> asteroids, float dt)
@@ -32,9 +36,14 @@ public class AsteroidSpawner
     {
         if (asteroid.Size == AsteroidSize.Small)
         {
+            NotifyAsteroidDestroyed(asteroids, asteroid);
             asteroid.Active = false;
             return;
         }
+
+        int lineageId = asteroid.LineageId;
+        if (lineageId > 0)
+            _lineagePieceCount[lineageId]++;
 
         var nextSize = asteroid.Size == AsteroidSize.Large ? AsteroidSize.Medium : AsteroidSize.Small;
         asteroid.Active = false;
@@ -42,14 +51,73 @@ public class AsteroidSpawner
         for (int i = 0; i < 2; i++)
         {
             var velocity = RandomVelocity(nextSize);
-            SpawnAsteroid(asteroids, nextSize, asteroid.Position, velocity);
+            var child = SpawnAsteroid(asteroids, nextSize, asteroid.Position, velocity);
+            child.LineageId = lineageId;
         }
     }
 
-    private void SpawnAsteroid(List<Asteroid> asteroids, AsteroidSize size, Vector2 position, Vector2? velocity = null)
+    public void NotifyAsteroidDestroyed(List<Asteroid> asteroids, Asteroid asteroid)
+    {
+        if (!asteroid.Active)
+            return;
+
+        int lineageId = asteroid.LineageId;
+        if (lineageId <= 0)
+            return;
+
+        if (--_lineagePieceCount[lineageId] > 0)
+            return;
+
+        _lineagePieceCount.Remove(lineageId);
+        SpawnIncomingLargeAsteroid(asteroids);
+    }
+
+    private void SpawnLargeAsteroid(List<Asteroid> asteroids, Vector2 position, Vector2? velocity)
+    {
+        var asteroid = SpawnAsteroid(asteroids, AsteroidSize.Large, position, velocity);
+        RegisterLargeLineage(asteroid);
+    }
+
+    private void SpawnIncomingLargeAsteroid(List<Asteroid> asteroids)
+    {
+        var (position, velocity) = GetPerimeterEntry();
+        SpawnLargeAsteroid(asteroids, position, velocity);
+    }
+
+    private void RegisterLargeLineage(Asteroid asteroid)
+    {
+        int lineageId = _nextLineageId++;
+        asteroid.LineageId = lineageId;
+        _lineagePieceCount[lineageId] = 1;
+    }
+
+    private (Vector2 Position, Vector2 Velocity) GetPerimeterEntry()
+    {
+        const float margin = 80f;
+        var center = new Vector2(GameConstants.WorldWidth * 0.5f, GameConstants.WorldHeight * 0.5f);
+        Vector2 position = _random.Next(4) switch
+        {
+            0 => new Vector2((float)_random.NextDouble() * GameConstants.WorldWidth, -margin),
+            1 => new Vector2(GameConstants.WorldWidth + margin, (float)_random.NextDouble() * GameConstants.WorldHeight),
+            2 => new Vector2((float)_random.NextDouble() * GameConstants.WorldWidth, GameConstants.WorldHeight + margin),
+            _ => new Vector2(-margin, (float)_random.NextDouble() * GameConstants.WorldHeight)
+        };
+
+        var direction = center - position;
+        if (direction.LengthSquared() < 1f)
+            direction = new Vector2(1f, 0f);
+
+        float jitter = ((float)_random.NextDouble() - 0.5f) * 0.8f;
+        direction = Vector2.Transform(direction, Matrix.CreateRotationZ(jitter));
+
+        return (position, Vector2.Normalize(direction) * 40f);
+    }
+
+    private Asteroid SpawnAsteroid(List<Asteroid> asteroids, AsteroidSize size, Vector2 position, Vector2? velocity = null)
     {
         var asteroid = GetInactiveAsteroid(asteroids);
         asteroid.Initialize(size, position, velocity ?? RandomVelocity(size), _random);
+        return asteroid;
     }
 
     private Asteroid GetInactiveAsteroid(List<Asteroid> asteroids)

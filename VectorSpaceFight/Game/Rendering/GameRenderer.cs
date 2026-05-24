@@ -62,6 +62,18 @@ public class GameRenderer
         _lineBatch.Flush(CreateViewProjection());
     }
 
+    public void DrawBloomTuner(float bloomIntensity)
+    {
+        _lineBatch.Begin();
+
+        const float scale = 1.5f;
+        var anchor = new Vector2(16f, GameConstants.WorldHeight - 16f);
+        var label = $"BLOOM {bloomIntensity:F2}  [ -  ] +  \\ RESET";
+        VectorFont.DrawText(_lineBatch, label, anchor, scale, Color.White * 0.45f, vAlign: VerticalAlign.Bottom);
+
+        _lineBatch.Flush(CreateViewProjection());
+    }
+
     public void DrawMatchHud(Ship[] ships, float matchTimer)
     {
         _lineBatch.Begin();
@@ -91,38 +103,49 @@ public class GameRenderer
         VectorFont.DrawText(_lineBatch, "MATCH OVER", new Vector2(GameConstants.WorldWidth * 0.5f, 80f),
             titleScale, Color.White, HorizontalAlign.Center);
 
-        var ranked = ships.OrderByDescending(s => s.Kills).ThenBy(s => s.PlayerIndex).ToArray();
-        for (int i = 0; i < ranked.Length; i++)
+        var ranked = ships
+            .OrderByDescending(s => s.Kills)
+            .ThenBy(s => s.PlayerIndex)
+            .ToArray();
+
+        const float labelGap = 0.8f;
+        const float scoreGap = 1.6f;
+
+        for (int rank = 0; rank < ranked.Length; rank++)
         {
-            var ship = ranked[i];
-            float y = 200f + i * 56f;
+            var ship = ranked[rank];
+            float y = 200f + rank * 56f;
             var rowColor = ship.Color * (ship.PlayerIndex == winnerIndex ? 1f : 0.7f);
             rowColor.A = 255;
 
-            float rowWidth = VectorDigits.MeasureWidth(i + 1, rowScale) + rowScale +
+            float rowWidth = VectorDigits.MeasureWidth(rank + 1, rowScale) +
+                             VectorFont.MeasureText(".", rowScale) +
+                             labelGap * rowScale +
                              VectorFont.MeasureText("P", rowScale) + VectorDigits.MeasureWidth(ship.PlayerIndex + 1, rowScale) +
-                             rowScale + VectorFont.MeasureText("KILLS", rowScale) + rowScale * 2 +
+                             scoreGap * rowScale +
+                             VectorFont.MeasureText("KILLS", rowScale) +
+                             scoreGap * rowScale +
                              VectorDigits.MeasureWidth(ship.Kills, rowScale * 1.2f);
             float x = (GameConstants.WorldWidth - rowWidth) * 0.5f;
 
-            VectorDigits.DrawNumber(_lineBatch, i + 1, new Vector2(x, y), rowScale, rowColor);
-            x += VectorDigits.MeasureWidth(i + 1, rowScale) + rowScale;
+            VectorDigits.DrawNumber(_lineBatch, rank + 1, new Vector2(x, y), rowScale, rowColor);
+            x += VectorDigits.MeasureWidth(rank + 1, rowScale);
             VectorFont.DrawText(_lineBatch, ".", new Vector2(x, y), rowScale, rowColor);
-            x += 2f * rowScale;
+            x += VectorFont.MeasureText(".", rowScale) + labelGap * rowScale;
             VectorFont.DrawPlayerLabel(_lineBatch, ship.PlayerIndex, new Vector2(x, y), rowScale, rowColor);
-            x += VectorFont.MeasureText("P", rowScale) + VectorDigits.MeasureWidth(ship.PlayerIndex + 1, rowScale) + rowScale * 2;
+            x += VectorFont.MeasureText("P", rowScale) + VectorDigits.MeasureWidth(ship.PlayerIndex + 1, rowScale) + scoreGap * rowScale;
             VectorFont.DrawText(_lineBatch, "KILLS", new Vector2(x, y), rowScale, rowColor * 0.75f);
-            x += VectorFont.MeasureText("KILLS", rowScale) + rowScale * 2;
+            x += VectorFont.MeasureText("KILLS", rowScale) + scoreGap * rowScale;
             VectorDigits.DrawNumber(_lineBatch, ship.Kills, new Vector2(x, y), rowScale * 1.2f, rowColor);
         }
 
         var winner = ships[winnerIndex];
-        float winnerWidth = VectorFont.MeasureText("WINNER", rowScale) + rowScale * 2 +
-                            VectorFont.MeasureText("P", rowScale * 1.3f) + VectorDigits.MeasureWidth(winner.PlayerIndex + 1, rowScale * 1.3f);
+        float winnerWidth = VectorFont.MeasureText("WINNER", rowScale) + rowScale +
+                            VectorFont.MeasureText("P", rowScale) + VectorDigits.MeasureWidth(winner.PlayerIndex + 1, rowScale * 1.3f);
         float winnerX = (GameConstants.WorldWidth - winnerWidth) * 0.5f;
         VectorFont.DrawText(_lineBatch, "WINNER", new Vector2(winnerX, 460f), rowScale, winner.Color);
         VectorFont.DrawPlayerLabel(_lineBatch, winner.PlayerIndex,
-            new Vector2(winnerX + VectorFont.MeasureText("WINNER", rowScale) + rowScale * 2, 460f), rowScale * 1.3f, winner.Color);
+            new Vector2(winnerX + VectorFont.MeasureText("WINNER", rowScale) + rowScale, 460f), rowScale * 1.3f, winner.Color);
 
         VectorFont.DrawText(_lineBatch, "START TO REMATCH", new Vector2(GameConstants.WorldWidth * 0.5f, 540f),
             hintScale, Color.Yellow, HorizontalAlign.Center);

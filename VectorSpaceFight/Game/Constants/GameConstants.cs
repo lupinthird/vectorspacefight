@@ -7,7 +7,7 @@ public static class GameConstants
     public const int WorldWidth = 1280;
     public const int WorldHeight = 720;
 
-    public const float MatchDurationSeconds = 180f;
+    public const float MatchDurationSeconds = 30f;
     public const float ShieldDuration = 3f;
     public const float ShieldCooldown = 10f;
     public const float SpawnShieldDuration = 3f;
@@ -15,6 +15,11 @@ public static class GameConstants
     public const float LeaderHighlightDuration = 3f;
 
     public const float VectorLineIntensity = 1.22f;
+
+    public const float BloomDefaultIntensity = 3f;
+    public const float BloomAdjustStep = 0.05f;
+    public const float BloomMinIntensity = 0f;
+    public const float BloomMaxIntensity = 4f;
 
     public const float HudScoreScale = 7.5f;
     public const float HudTimerScale = 4f;
@@ -28,6 +33,7 @@ public static class GameConstants
     public const float BulletSpeed = 500f;
     public const float BulletLifetime = 1.5f;
     public const float FireRate = 0.25f;
+    public const int MaxActiveBulletsPerPlayer = 3;
 
     public const float ShipRadius = 12f;
     public const float BulletRadius = 2f;
@@ -71,6 +77,14 @@ public static class GameConstants
             _ => new Vector2(margin, margin)
         };
     }
+
+    public static float GetAsteroidMass(AsteroidSize size) => size switch
+    {
+        AsteroidSize.Large => LargeAsteroidRadius * LargeAsteroidRadius,
+        AsteroidSize.Medium => MediumAsteroidRadius * MediumAsteroidRadius,
+        AsteroidSize.Small => SmallAsteroidRadius * SmallAsteroidRadius,
+        _ => SmallAsteroidRadius * SmallAsteroidRadius
+    };
 
     public static float GetAsteroidRadius(AsteroidSize size) => size switch
     {

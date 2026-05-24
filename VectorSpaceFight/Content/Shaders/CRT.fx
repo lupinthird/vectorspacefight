@@ -9,6 +9,7 @@
 
 float2 TextureSize;
 float Time;
+float BloomIntensity = 3.0;
 
 texture SceneTexture;
 sampler2D SceneSampler = sampler_state
@@ -69,7 +70,7 @@ float4 MainPS(VertexShaderOutput input) : COLOR0
     float3 bloomNear = GatherBloom(uv, texel, 1.5);
     float3 bloomFar = GatherBloom(uv, texel, 3.5);
     float bright = smoothstep(0.08, 0.32, Luma(color));
-    color += (bloomNear * 0.48 + bloomFar * 0.32) * bright;
+    color += (bloomNear * 0.48 + bloomFar * 0.32) * bright * BloomIntensity;
 
     float scanline = 0.92 + 0.08 * sin(uv.y * TextureSize.y * 3.14159);
     color *= scanline;

@@ -12,6 +12,7 @@ public class Asteroid
     public float Rotation;
     public float RotationSpeed;
     public bool Active;
+    public int LineageId;
 
     public float Radius => GameConstants.GetAsteroidRadius(Size);
 
@@ -24,6 +25,7 @@ public class Asteroid
         RotationSpeed = (float)(random.NextDouble() * 2 - 1) * (size == AsteroidSize.Large ? 0.8f : 1.5f);
         Vertices = GenerateVertices(size, random);
         Active = true;
+        LineageId = 0;
     }
 
     public (Vector2 Start, Vector2 End)[] GetWorldEdges()

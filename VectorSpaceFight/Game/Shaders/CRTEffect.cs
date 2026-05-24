@@ -1,5 +1,6 @@
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
+using VectorSpaceFight.Game.Constants;
 
 namespace VectorSpaceFight.Game.Shaders;
 
@@ -8,16 +9,29 @@ public sealed class CRTEffect : IDisposable
     private readonly Effect _effect;
     private readonly VertexBuffer _vertexBuffer;
 
+    public float BloomIntensity { get; private set; } = GameConstants.BloomDefaultIntensity;
+
     public CRTEffect(Effect effect, GraphicsDevice device)
     {
         _effect = effect;
         _vertexBuffer = CreateFullscreenQuad(device);
     }
 
+    public void AdjustBloom(float delta)
+    {
+        BloomIntensity = Math.Clamp(
+            BloomIntensity + delta,
+            GameConstants.BloomMinIntensity,
+            GameConstants.BloomMaxIntensity);
+    }
+
+    public void ResetBloom() => BloomIntensity = GameConstants.BloomDefaultIntensity;
+
     public void Apply(SpriteBatch spriteBatch, RenderTarget2D source, float time)
     {
         _effect.Parameters["TextureSize"]?.SetValue(new Vector2(source.Width, source.Height));
         _effect.Parameters["Time"]?.SetValue(time);
+        _effect.Parameters["BloomIntensity"]?.SetValue(BloomIntensity);
         _effect.Parameters["SceneTexture"]?.SetValue(source);
 
         var device = spriteBatch.GraphicsDevice;

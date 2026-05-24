@@ -4,9 +4,18 @@ namespace VectorSpaceFight.Game.Rendering;
 
 public static class VectorFont
 {
-    public const float CellWidth = 5f;
+    public const float CellWidth = VectorDigits.CellWidth;
     public const float CellHeight = VectorDigits.CellHeight;
     public const float LetterAdvance = VectorDigits.DigitAdvance;
+
+    private const float L = 0.5f;
+    private const float R = 3.5f;
+    private const float T = 0.5f;
+    private const float Bot = 7.5f;
+    private const float UM = 3.8f;
+    private const float LM = 4.2f;
+    private const float Mid = 4f;
+    private const float Cx = 2f;
 
     private static readonly Dictionary<char, (float X1, float Y1, float X2, float Y2)[]> Glyphs = BuildGlyphs();
 
@@ -16,7 +25,7 @@ public static class VectorFont
         foreach (char c in text)
         {
             if (c == ' ')
-                width += 3f * scale;
+                width += LetterAdvance * 0.6f * scale;
             else
                 width += LetterAdvance * scale;
         }
@@ -49,7 +58,7 @@ public static class VectorFont
         {
             if (c == ' ')
             {
-                cursor += 3f * scale;
+                cursor += LetterAdvance * 0.6f * scale;
                 continue;
             }
 
@@ -87,33 +96,34 @@ public static class VectorFont
         };
 
         DrawText(batch, "P", new Vector2(x, anchor.Y), scale, color);
-        VectorDigits.DrawNumber(batch, playerIndex + 1, new Vector2(x + MeasureText("P", scale), anchor.Y), scale, color);
+        VectorDigits.DrawNumber(batch, playerIndex + 1, new Vector2(x + LetterAdvance * scale, anchor.Y), scale, color);
     }
 
     private static Dictionary<char, (float, float, float, float)[]> BuildGlyphs()
     {
         return new Dictionary<char, (float, float, float, float)[]>
         {
-            ['A'] = Seg(0, 8, 2.5f, 0, 2.5f, 0, 5, 0, 8, 5, 8, 1.5f, 4, 3.5f, 4),
-            ['C'] = Seg(5, 0, 1, 0, 0, 2, 0, 6, 1, 8, 5, 8),
-            ['E'] = Seg(0, 0, 0, 8, 0, 0, 5, 0, 0, 4, 4, 4, 0, 8, 5, 8),
-            ['F'] = Seg(0, 0, 0, 8, 0, 0, 5, 0, 0, 4, 4, 4),
-            ['G'] = Seg(5, 0, 1, 0, 0, 2, 0, 6, 1, 8, 5, 8, 5, 8, 5, 4.5f, 3.5f, 4.5f),
-            ['H'] = Seg(0, 0, 0, 8, 5, 0, 5, 8, 0, 4, 5, 4),
-            ['I'] = Seg(1, 0, 4, 0, 2.5f, 0, 2.5f, 8, 1, 8, 4, 8),
-            ['K'] = Seg(0, 0, 0, 8, 0, 4, 5, 0, 0, 4, 5, 8),
-            ['L'] = Seg(0, 0, 0, 8, 0, 8, 5, 8),
-            ['M'] = Seg(0, 8, 0, 0, 0, 0, 2.5f, 4, 2.5f, 4, 5, 0, 5, 0, 5, 8),
-            ['N'] = Seg(0, 8, 0, 0, 0, 0, 5, 8, 5, 8, 5, 0),
-            ['O'] = Seg(1, 0, 4, 0, 0, 2, 0, 6, 1, 8, 4, 8, 5, 6, 5, 2, 4, 0, 1, 0),
-            ['P'] = Seg(0, 8, 0, 0, 0, 0, 4, 0, 4, 0, 5, 2, 5, 3.5f, 4, 4, 0, 4),
-            ['R'] = Seg(0, 8, 0, 0, 0, 0, 4, 0, 4, 0, 5, 2, 5, 3.5f, 4, 4, 0, 4, 5, 8),
-            ['S'] = Seg(4.5f, 1, 1.5f, 0, 0, 1.5f, 0, 3.2f, 2.2f, 4, 4.8f, 4.8f, 5, 6.2f, 3.2f, 8, 0.8f, 7, 0, 5.8f),
-            ['T'] = Seg(0, 0, 5, 0, 2.5f, 0, 2.5f, 8),
-            ['U'] = Seg(0, 0, 0, 6, 1, 8, 4, 8, 5, 6, 5, 0),
-            ['V'] = Seg(0, 0, 2.5f, 8, 2.5f, 8, 5, 0),
-            ['W'] = Seg(0, 0, 1.5f, 8, 1.5f, 8, 2.5f, 3, 2.5f, 3, 3.5f, 8, 3.5f, 8, 5, 0),
-            ['.'] = Seg(2.2f, 7.2f, 2.8f, 7.8f),
+            ['A'] = Seg(L, Bot, Cx, T, Cx, T, R, Bot, 0.8f, Mid, 3.2f, Mid),
+            ['B'] = Seg(L, Bot, L, T, L, T, R, T, R, T, R, UM, 3f, Mid, L, Mid, 3f, Mid, R, LM, R, LM, R, Bot, R, Bot, L, Bot),
+            ['C'] = Seg(R, T, L, T, L, T, L, Bot, L, Bot, R, Bot),
+            ['E'] = Seg(L, T, L, Bot, L, T, R, T, L, Mid, 3f, Mid, L, Bot, R, Bot),
+            ['F'] = Seg(L, T, L, Bot, L, T, R, T, L, Mid, 3f, Mid),
+            ['G'] = Seg(R, T, L, T, L, T, L, Bot, L, Bot, R, Bot, R, Bot, R, LM, 2.5f, LM, R, LM),
+            ['H'] = Seg(L, T, L, Bot, R, T, R, Bot, L, Mid, R, Mid),
+            ['I'] = Seg(L, T, R, T, Cx, T, Cx, Bot, L, Bot, R, Bot),
+            ['K'] = Seg(L, T, L, Bot, L, Mid, R, T, L, Mid, R, Bot),
+            ['L'] = Seg(L, T, L, Bot, L, Bot, R, Bot),
+            ['M'] = Seg(L, Bot, L, T, L, T, Cx, Mid, Cx, Mid, R, T, R, T, R, Bot),
+            ['N'] = Seg(L, Bot, L, T, L, T, R, Bot, R, Bot, R, T),
+            ['O'] = Seg(L, T, R, T, R, T, R, Bot, L, Bot, R, Bot, L, T, L, Bot),
+            ['P'] = Seg(L, Bot, L, T, L, T, R, T, R, T, R, UM, 3f, Mid, L, Mid),
+            ['R'] = Seg(L, Bot, L, T, L, T, R, T, R, T, R, UM, 3f, Mid, L, Mid, 2.2f, Mid, R, Bot),
+            ['S'] = Seg(R, T, L, T, L, T, L, Mid, L, Mid, R, Mid, R, Mid, R, Bot, R, Bot, L, Bot),
+            ['T'] = Seg(L, T, R, T, Cx, T, Cx, Bot),
+            ['U'] = Seg(L, T, L, 6.8f, L, 6.8f, 1f, Bot, 1f, Bot, 3f, Bot, 3f, Bot, R, 6.8f, R, 6.8f, R, T),
+            ['V'] = Seg(L, T, Cx, Bot, Cx, Bot, R, T),
+            ['W'] = Seg(L, T, 1f, Bot, 1f, Bot, Cx, 3.2f, Cx, 3.2f, 3f, Bot, 3f, Bot, R, T),
+            ['.'] = Seg(Cx, 6.8f, Cx, Bot),
         };
     }
 
