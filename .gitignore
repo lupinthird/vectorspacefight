@@ -1,0 +1,17 @@
+## Build artifacts
+bin/
+obj/
+*.user
+*.suo
+
+## MonoGame
+*.mgcontent
+*.xnb
+
+## IDE
+.vs/
+.idea/
+
+## OS
+Thumbs.db
+.DS_Store
