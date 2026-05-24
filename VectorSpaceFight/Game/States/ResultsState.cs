@@ -69,6 +69,7 @@ public class ResultsState : IGameState
         var winner = _ships.OrderByDescending(s => s.Kills).ThenBy(s => s.PlayerIndex).First();
         _context.Renderer.DrawResults(_ships, winner.PlayerIndex);
 
-        _context.CRTEffect.Apply(_context.SpriteBatch, _context.SceneTarget, _elapsedTime);
+        _context.PostProcess.Apply(_context.SpriteBatch, _context.SceneTarget, _elapsedTime, _context.RenderSettings);
+        _context.Renderer.DrawShaderTuningHud(_context.RenderSettings);
     }
 }

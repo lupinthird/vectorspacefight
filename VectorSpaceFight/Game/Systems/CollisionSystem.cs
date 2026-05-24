@@ -10,14 +10,16 @@ public class CollisionSystem
     private readonly DebrisSystem _debrisSystem;
     private readonly List<LineDebris> _debris;
     private readonly Action? _playRumble;
+    private readonly Action? _playExplosion;
 
     public CollisionSystem(AsteroidSpawner asteroidSpawner, DebrisSystem debrisSystem, List<LineDebris> debris,
-        Action? playRumble = null)
+        Action? playRumble = null, Action? playExplosion = null)
     {
         _asteroidSpawner = asteroidSpawner;
         _debrisSystem = debrisSystem;
         _debris = debris;
         _playRumble = playRumble;
+        _playExplosion = playExplosion;
     }
 
     public void Update(Ship[] ships, List<Bullet> bullets, List<Asteroid> asteroids)
@@ -70,6 +72,7 @@ public class CollisionSystem
                 float impulse = -(1f + restitution) * velocityAlongNormal / (1f / massA + 1f / massB);
                 a.Velocity -= normal * impulse / massA;
                 b.Velocity += normal * impulse / massB;
+                _playRumble?.Invoke();
             }
         }
     }
@@ -126,7 +129,7 @@ public class CollisionSystem
                 bullet.Active = false;
                 _debrisSystem.SpawnShipDebris(_debris, ship, bullet.Velocity);
                 ship.Kill(bullet.OwnerIndex, ships);
-                _playRumble?.Invoke();
+                _playExplosion?.Invoke();
                 break;
             }
         }
@@ -168,7 +171,7 @@ public class CollisionSystem
                 {
                     _debrisSystem.SpawnShipDebris(_debris, b, a.Velocity - b.Velocity);
                     b.Kill(a.PlayerIndex, ships);
-                    _playRumble?.Invoke();
+                    _playExplosion?.Invoke();
                     continue;
                 }
 
@@ -176,7 +179,7 @@ public class CollisionSystem
                 {
                     _debrisSystem.SpawnShipDebris(_debris, a, b.Velocity - a.Velocity);
                     a.Kill(b.PlayerIndex, ships);
-                    _playRumble?.Invoke();
+                    _playExplosion?.Invoke();
                     continue;
                 }
 
@@ -215,7 +218,7 @@ public class CollisionSystem
 
                 _debrisSystem.SpawnShipDebris(_debris, ship, asteroid.Velocity);
                 ship.Kill(-1, ships);
-                _playRumble?.Invoke();
+                _playExplosion?.Invoke();
                 break;
             }
         }
@@ -256,12 +259,12 @@ public class CollisionSystem
             _debrisSystem.SpawnAsteroidDebris(_debris, asteroid, impactDirection);
             _asteroidSpawner.NotifyAsteroidDestroyed(asteroids, asteroid);
             asteroid.Active = false;
-            _playRumble?.Invoke();
+            _playExplosion?.Invoke();
             return;
         }
 
         _asteroidSpawner.SplitAsteroid(asteroids, asteroid);
-        _playRumble?.Invoke();
+        _playExplosion?.Invoke();
     }
 
     private static bool CirclesOverlap(Vector2 aPos, float aRadius, Vector2 bPos, float bRadius)

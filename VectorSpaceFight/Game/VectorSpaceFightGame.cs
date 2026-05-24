@@ -7,6 +7,7 @@ using VectorSpaceFight.Game.Entities;
 using VectorSpaceFight.Game.Rendering;
 using VectorSpaceFight.Game.Shaders;
 using VectorSpaceFight.Game.States;
+using VectorSpaceFight.Game.Systems;
 
 namespace VectorSpaceFight.Game;
 
@@ -16,9 +17,11 @@ public class VectorSpaceFightGame : Microsoft.Xna.Framework.Game
     private SpriteBatch _spriteBatch = null!;
     private LineBatch _lineBatch = null!;
     private GameRenderer _renderer = null!;
-    private CRTEffect _crtEffect = null!;
+    private PostProcessEffect _postProcess = null!;
     private RenderTarget2D _sceneTarget = null!;
     private ProceduralAudioSystem _audio = null!;
+    private RenderSettings _renderSettings = null!;
+    private ShaderTuningInput _shaderTuningInput = null!;
     private GameContext _context = null!;
 
     private IGameState _currentState = null!;
@@ -73,8 +76,12 @@ public class VectorSpaceFightGame : Microsoft.Xna.Framework.Game
             SurfaceFormat.Color,
             DepthFormat.None);
 
-        var crtShader = Content.Load<Effect>("Shaders/CRT");
-        _crtEffect = new CRTEffect(crtShader, GraphicsDevice);
+        var postShader = Content.Load<Effect>("Shaders/CRT");
+        _postProcess = new PostProcessEffect(postShader, GraphicsDevice);
+        _renderSettings = new RenderSettings();
+        _renderSettings.MarkHudVisible();
+        _shaderTuningInput = new ShaderTuningInput();
+        _lineBatch.SetRenderSettings(_renderSettings);
         _audio = new ProceduralAudioSystem();
 
         _context = new GameContext
@@ -84,7 +91,8 @@ public class VectorSpaceFightGame : Microsoft.Xna.Framework.Game
             SpriteBatch = _spriteBatch,
             LineBatch = _lineBatch,
             Renderer = _renderer,
-            CRTEffect = _crtEffect,
+            PostProcess = _postProcess,
+            RenderSettings = _renderSettings,
             SceneTarget = _sceneTarget,
             Audio = _audio,
             Game = this
@@ -105,6 +113,10 @@ public class VectorSpaceFightGame : Microsoft.Xna.Framework.Game
             Exit();
         }
 
+        float dt = (float)gameTime.ElapsedGameTime.TotalSeconds;
+        _shaderTuningInput.Update(_renderSettings);
+        _renderSettings.Update(dt);
+
         _currentState.Update(gameTime);
         base.Update(gameTime);
     }
@@ -118,7 +130,7 @@ public class VectorSpaceFightGame : Microsoft.Xna.Framework.Game
     protected override void UnloadContent()
     {
         _lineBatch.Dispose();
-        _crtEffect.Dispose();
+        _postProcess.Dispose();
         _sceneTarget.Dispose();
         _audio.Dispose();
         base.UnloadContent();

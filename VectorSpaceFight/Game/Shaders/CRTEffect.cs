@@ -1,27 +1,34 @@
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
-using VectorSpaceFight.Game.Constants;
+using VectorSpaceFight.Game.Rendering;
 
 namespace VectorSpaceFight.Game.Shaders;
 
-public sealed class CRTEffect : IDisposable
+public sealed class PostProcessEffect : IDisposable
 {
     private readonly Effect _effect;
     private readonly VertexBuffer _vertexBuffer;
 
-    public float BloomIntensity { get; } = GameConstants.BloomDefaultIntensity;
-
-    public CRTEffect(Effect effect, GraphicsDevice device)
+    public PostProcessEffect(Effect effect, GraphicsDevice device)
     {
         _effect = effect;
         _vertexBuffer = CreateFullscreenQuad(device);
     }
 
-    public void Apply(SpriteBatch spriteBatch, RenderTarget2D source, float time)
+    public void Apply(SpriteBatch spriteBatch, RenderTarget2D source, float time, RenderSettings settings)
     {
         _effect.Parameters["TextureSize"]?.SetValue(new Vector2(source.Width, source.Height));
         _effect.Parameters["Time"]?.SetValue(time);
-        _effect.Parameters["BloomIntensity"]?.SetValue(BloomIntensity);
+        _effect.Parameters["BloomIntensity"]?.SetValue(settings.BloomIntensity);
+        _effect.Parameters["NeonGlowIntensity"]?.SetValue(settings.NeonGlowIntensity);
+        _effect.Parameters["BloomEnabled"]?.SetValue(RenderSettings.AsFlag(settings.Bloom));
+        _effect.Parameters["NeonGlowEnabled"]?.SetValue(RenderSettings.AsFlag(settings.NeonGlow));
+        _effect.Parameters["NeonCoreEnabled"]?.SetValue(RenderSettings.AsFlag(settings.NeonCore));
+        _effect.Parameters["NeonTubeExpandEnabled"]?.SetValue(RenderSettings.AsFlag(settings.NeonTubeExpand));
+        _effect.Parameters["ScanlinesEnabled"]?.SetValue(RenderSettings.AsFlag(settings.Scanlines));
+        _effect.Parameters["PhosphorEnabled"]?.SetValue(RenderSettings.AsFlag(settings.PhosphorMask));
+        _effect.Parameters["VignetteEnabled"]?.SetValue(RenderSettings.AsFlag(settings.Vignette));
+        _effect.Parameters["NoiseEnabled"]?.SetValue(RenderSettings.AsFlag(settings.FilmNoise));
         _effect.Parameters["SceneTexture"]?.SetValue(source);
 
         var device = spriteBatch.GraphicsDevice;

@@ -1,6 +1,5 @@
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
-using VectorSpaceFight.Game.Constants;
 
 namespace VectorSpaceFight.Game.Rendering;
 
@@ -10,6 +9,7 @@ public sealed class LineBatch : IDisposable
     private readonly BasicEffect _effect;
     private readonly DynamicVertexBuffer _vertexBuffer;
     private readonly VertexPositionColor[] _vertices;
+    private RenderSettings _renderSettings = new();
     private int _vertexCount;
 
     private const int MaxVertices = 16384;
@@ -27,6 +27,11 @@ public sealed class LineBatch : IDisposable
         _vertexBuffer = new DynamicVertexBuffer(device, typeof(VertexPositionColor), MaxVertices, BufferUsage.WriteOnly);
     }
 
+    public void SetRenderSettings(RenderSettings renderSettings)
+    {
+        _renderSettings = renderSettings;
+    }
+
     public void Begin()
     {
         _vertexCount = 0;
@@ -34,8 +39,13 @@ public sealed class LineBatch : IDisposable
 
     public void DrawLine(Vector2 start, Vector2 end, Color color)
     {
-        AddVertex(start, color);
-        AddVertex(end, color);
+        if (_renderSettings.NeonTubes)
+            DrawNeonTube(start, end, color);
+        else
+        {
+            AddVertex(start, color);
+            AddVertex(end, color);
+        }
     }
 
     public void DrawTriangle(Vector2 center, float rotation, float size, Color color)
@@ -106,17 +116,47 @@ public sealed class LineBatch : IDisposable
         return new[] { nose, tailLeft, tailRight };
     }
 
+    private void DrawNeonTube(Vector2 start, Vector2 end, Color color)
+    {
+        var delta = end - start;
+        float length = delta.Length();
+        if (length < 0.001f)
+            return;
+
+        var perp = new Vector2(-delta.Y, delta.X) / length;
+        float width = _renderSettings.NeonTubeWidth;
+
+        for (float layer = -width; layer <= width; layer += 1f)
+        {
+            float falloff = 1f - MathF.Abs(layer) / (width + 0.5f);
+            var layerColor = color * (0.22f + falloff * 0.55f);
+            layerColor.A = color.A;
+            var offset = perp * layer * 0.9f;
+            AddVertex(start + offset, BoostColor(layerColor));
+            AddVertex(end + offset, BoostColor(layerColor));
+        }
+
+        var coreColor = Color.Lerp(color, Color.White, 0.62f);
+        coreColor.A = color.A;
+        for (float layer = -1f; layer <= 1f; layer += 1f)
+        {
+            var offset = perp * layer * 0.35f;
+            AddVertex(start + offset, BoostColor(coreColor));
+            AddVertex(end + offset, BoostColor(coreColor));
+        }
+    }
+
     private void AddVertex(Vector2 position, Color color)
     {
         if (_vertexCount >= MaxVertices)
             return;
 
-        _vertices[_vertexCount++] = new VertexPositionColor(new Vector3(position, 0f), BoostColor(color));
+        _vertices[_vertexCount++] = new VertexPositionColor(new Vector3(position, 0f), color);
     }
 
-    private static Color BoostColor(Color color)
+    private Color BoostColor(Color color)
     {
-        var boosted = color * GameConstants.VectorLineIntensity;
+        var boosted = color * _renderSettings.LineIntensity;
         boosted.A = color.A;
         return boosted;
     }

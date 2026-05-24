@@ -13,8 +13,10 @@ public sealed class ProceduralAudioSystem : IDisposable
     private readonly ShieldVoice[] _shieldVoices = new ShieldVoice[4];
     private readonly SoundEffect _shootEffect;
     private readonly SoundEffect _rumbleEffect;
+    private readonly SoundEffect _explosionEffect;
     private readonly SoundEffectInstance[] _shootInstances = new SoundEffectInstance[4];
     private readonly SoundEffectInstance _rumbleInstance;
+    private readonly SoundEffectInstance _explosionInstance;
 
     public ProceduralAudioSystem()
     {
@@ -26,6 +28,7 @@ public sealed class ProceduralAudioSystem : IDisposable
 
         _shootEffect = CreateShootEffect();
         _rumbleEffect = CreateRumbleEffect();
+        _explosionEffect = CreateExplosionEffect();
         for (int i = 0; i < _shootInstances.Length; i++)
         {
             _shootInstances[i] = _shootEffect.CreateInstance();
@@ -33,6 +36,7 @@ public sealed class ProceduralAudioSystem : IDisposable
         }
 
         _rumbleInstance = _rumbleEffect.CreateInstance();
+        _explosionInstance = _explosionEffect.CreateInstance();
     }
 
     public void Update()
@@ -69,9 +73,19 @@ public sealed class ProceduralAudioSystem : IDisposable
         if (instance.State == SoundState.Playing)
             instance.Stop();
 
-        instance.Volume = 1f;
+        instance.Volume = 0.5f;
         instance.Pitch = 0f;
         instance.Play();
+    }
+
+    public void PlayExplosion()
+    {
+        if (_explosionInstance.State == SoundState.Playing)
+            _explosionInstance.Stop();
+
+        _explosionInstance.Volume = 1f;
+        _explosionInstance.Pitch = 0f;
+        _explosionInstance.Play();
     }
 
     public void PlayRumble()
@@ -106,8 +120,10 @@ public sealed class ProceduralAudioSystem : IDisposable
             instance.Dispose();
 
         _rumbleInstance.Dispose();
+        _explosionInstance.Dispose();
         _shootEffect.Dispose();
         _rumbleEffect.Dispose();
+        _explosionEffect.Dispose();
     }
 
     private static float GetPan(int playerIndex) => playerIndex switch
@@ -176,6 +192,40 @@ public sealed class ProceduralAudioSystem : IDisposable
 
             WriteSample(samples, i, sample);
             phase += phaseStep;
+        }
+
+        return new SoundEffect(samples, SampleRate, AudioChannels.Mono);
+    }
+
+    private static SoundEffect CreateExplosionEffect()
+    {
+        // Low-pass white noise with ADSR: instant attack, short decay, no sustain, long release.
+        const float decaySeconds = 0.005f;
+        const float releaseSeconds = 1.5f;
+        const float decayLevel = 0.38f;
+        const float noiseCutoff = 0.025f;
+        const float maxVolume = 0.9f;
+
+        float duration = decaySeconds + releaseSeconds;
+        int sampleCount = (int)(SampleRate * duration);
+        var samples = new byte[sampleCount * 2];
+        var rng = new Random(77301);
+        float filterState = 0f;
+
+        for (int i = 0; i < sampleCount; i++)
+        {
+            float t = i / (float)SampleRate;
+            float envelope;
+            if (t <= decaySeconds)
+                envelope = MathHelper.Lerp(1f, decayLevel, t / decaySeconds);
+            else
+                envelope = MathHelper.Lerp(decayLevel, 0f, (t - decaySeconds) / releaseSeconds);
+
+            float white = (float)(rng.NextDouble() * 2.0 - 1.0);
+            filterState += noiseCutoff * (white - filterState);
+            float sample = filterState * envelope * maxVolume;
+
+            WriteSample(samples, i, sample);
         }
 
         return new SoundEffect(samples, SampleRate, AudioChannels.Mono);
@@ -282,6 +332,8 @@ public sealed class ProceduralAudioSystem : IDisposable
         private const float FrequencyB = 222.5f;
         private const float BasePhaseOffset = MathF.PI * 0.35f;
         private const float PhaserLfoRate = 1.6f;
+        private const float TremoloRate = 6f;
+        private const float TremoloDepth = 0.5f;
         private const float RayGunSweepSeconds = 0.09f;
         private const float RayGunSweepRatio = 1.38f;
         private const float ReleaseSeconds = 0.04f;
@@ -297,6 +349,7 @@ public sealed class ProceduralAudioSystem : IDisposable
         private double _phaseA;
         private double _phaseB;
         private double _lfoPhase;
+        private double _tremoloPhase;
 
         public ShieldVoice(int sampleRate, int channels, int bufferSampleCount)
         {
@@ -358,6 +411,7 @@ public sealed class ProceduralAudioSystem : IDisposable
             var buffer = new byte[_bufferSampleCount * 2];
             float releaseStep = MaxVolume / (ReleaseSeconds * _sampleRate);
             float lfoStep = MathF.Tau * PhaserLfoRate / _sampleRate;
+            float tremoloStep = MathF.Tau * TremoloRate / _sampleRate;
 
             for (int i = 0; i < _bufferSampleCount; i++)
             {
@@ -381,8 +435,10 @@ public sealed class ProceduralAudioSystem : IDisposable
                 double phaseStepB = MathF.Tau * freqB / _sampleRate;
 
                 _lfoPhase += lfoStep;
+                _tremoloPhase += tremoloStep;
                 float phaserMod = MathF.Sin((float)_lfoPhase) * MathF.PI * 0.55f;
                 float stereoMix = (MathF.Sin((float)(_lfoPhase * 0.65)) + 1f) * 0.5f;
+                float tremolo = 1f - TremoloDepth + TremoloDepth * (0.5f + 0.5f * MathF.Sin((float)_tremoloPhase));
 
                 float waveA = MathF.Sin((float)_phaseA);
                 float waveB = MathF.Sin((float)(_phaseB + BasePhaseOffset + phaserMod));
@@ -390,7 +446,7 @@ public sealed class ProceduralAudioSystem : IDisposable
 
                 float mixed = waveA * (0.55f + stereoMix * 0.45f)
                             + waveB * (0.55f + (1f - stereoMix) * 0.45f);
-                float sample = (mixed * 0.42f + harmonic) * _envelope;
+                float sample = (mixed * 0.42f + harmonic) * _envelope * tremolo;
 
                 WriteSample(buffer, i, sample);
 

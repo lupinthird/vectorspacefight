@@ -29,7 +29,12 @@ public class PlayingState : IGameState
         _context = context;
         _endMatch = endMatch;
         _asteroidSpawner = new AsteroidSpawner();
-        _collisionSystem = new CollisionSystem(_asteroidSpawner, _debrisSystem, _debris, () => context.Audio.PlayRumble());
+        _collisionSystem = new CollisionSystem(
+            _asteroidSpawner,
+            _debrisSystem,
+            _debris,
+            playRumble: () => context.Audio.PlayRumble(),
+            playExplosion: () => context.Audio.PlayExplosion());
         _ships = new[]
         {
             new Ship(0),
@@ -147,9 +152,10 @@ public class PlayingState : IGameState
 
         _context.Renderer.DrawWorld(_ships, _bullets, _asteroids, _debris, _elapsedTime);
 
-        _context.CRTEffect.Apply(_context.SpriteBatch, _context.SceneTarget, _elapsedTime);
+        _context.PostProcess.Apply(_context.SpriteBatch, _context.SceneTarget, _elapsedTime, _context.RenderSettings);
         _context.Renderer.DrawLeaderHighlights(_ships, _elapsedTime);
         _context.Renderer.DrawMatchHud(_ships, _matchTimer);
+        _context.Renderer.DrawShaderTuningHud(_context.RenderSettings);
     }
 
     private static void UpdateRespawn(Ship ship, float dt)

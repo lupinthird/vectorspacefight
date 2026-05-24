@@ -59,6 +59,7 @@ public class MenuState : IGameState
         device.Clear(Color.Black);
 
         _context.Renderer.DrawMenu(_elapsedTime);
-        _context.CRTEffect.Apply(_context.SpriteBatch, _context.SceneTarget, _elapsedTime);
+        _context.PostProcess.Apply(_context.SpriteBatch, _context.SceneTarget, _elapsedTime, _context.RenderSettings);
+        _context.Renderer.DrawShaderTuningHud(_context.RenderSettings);
     }
 }

@@ -14,7 +14,8 @@ public class GameContext
     public required SpriteBatch SpriteBatch { get; init; }
     public required LineBatch LineBatch { get; init; }
     public required GameRenderer Renderer { get; init; }
-    public required CRTEffect CRTEffect { get; init; }
+    public required PostProcessEffect PostProcess { get; init; }
+    public required RenderSettings RenderSettings { get; init; }
     public required RenderTarget2D SceneTarget { get; init; }
     public required ProceduralAudioSystem Audio { get; init; }
     public required VectorSpaceFightGame Game { get; init; }

@@ -238,6 +238,53 @@ public class GameRenderer
             _lineBatch.DrawLine(points[i], points[(i + 1) % points.Length], color);
     }
 
+    public void DrawShaderTuningHud(RenderSettings settings)
+    {
+        if (settings.HudVisibleTimer <= 0f)
+            return;
+
+        _lineBatch.Begin();
+
+        const float scale = 1.35f;
+        const float lineHeight = 14f;
+        var origin = new Vector2(18f, 18f);
+        var onColor = Color.Lime * 0.9f;
+        onColor.A = 255;
+        var offColor = Color.Gray * 0.55f;
+        offColor.A = 255;
+        var headerColor = Color.White * 0.75f;
+        headerColor.A = 255;
+
+        VectorFont.DrawText(_lineBatch, "SHADER TUNING", origin, scale, headerColor);
+        float y = origin.Y + lineHeight * 1.6f;
+
+        DrawToggleRow("F1 BLOOM", settings.Bloom, ref y, scale, lineHeight, onColor, offColor);
+        DrawToggleRow("F2 NEON GLOW", settings.NeonGlow, ref y, scale, lineHeight, onColor, offColor);
+        DrawToggleRow("F3 NEON CORE", settings.NeonCore, ref y, scale, lineHeight, onColor, offColor);
+        DrawToggleRow("F4 TUBE EXPAND", settings.NeonTubeExpand, ref y, scale, lineHeight, onColor, offColor);
+        DrawToggleRow("F5 NEON TUBES", settings.NeonTubes, ref y, scale, lineHeight, onColor, offColor);
+        DrawToggleRow("F6 SCANLINES", settings.Scanlines, ref y, scale, lineHeight, onColor, offColor);
+        DrawToggleRow("F7 PHOSPHOR", settings.PhosphorMask, ref y, scale, lineHeight, onColor, offColor);
+        DrawToggleRow("F8 VIGNETTE", settings.Vignette, ref y, scale, lineHeight, onColor, offColor);
+        DrawToggleRow("F9 NOISE", settings.FilmNoise, ref y, scale, lineHeight, onColor, offColor);
+        VectorFont.DrawText(_lineBatch, $"[ ] BLOOM {settings.BloomIntensity:0.00}", new Vector2(origin.X, y), scale, headerColor);
+        y += lineHeight;
+        VectorFont.DrawText(_lineBatch, $"- + GLOW {settings.NeonGlowIntensity:0.0}", new Vector2(origin.X, y), scale, headerColor);
+        y += lineHeight;
+        VectorFont.DrawText(_lineBatch, $"TUBE {settings.NeonTubeWidth:0.00}  , .", new Vector2(origin.X, y), scale, headerColor);
+        y += lineHeight;
+        VectorFont.DrawText(_lineBatch, "F10 NEON PRESET", new Vector2(origin.X, y), scale, headerColor);
+
+        _lineBatch.Flush(CreateViewProjection());
+    }
+
+    private void DrawToggleRow(string label, bool enabled, ref float y, float scale, float lineHeight,
+        Color onColor, Color offColor)
+    {
+        VectorFont.DrawText(_lineBatch, label, new Vector2(18f, y), scale, enabled ? onColor : offColor);
+        y += lineHeight;
+    }
+
     public void DrawLeaderHighlights(Ship[] ships, float time)
     {
         _lineBatch.Begin();
