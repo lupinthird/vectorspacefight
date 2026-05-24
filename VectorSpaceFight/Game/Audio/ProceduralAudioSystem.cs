@@ -12,7 +12,9 @@ public sealed class ProceduralAudioSystem : IDisposable
     private readonly ThrustVoice[] _thrustVoices = new ThrustVoice[4];
     private readonly ShieldVoice[] _shieldVoices = new ShieldVoice[4];
     private readonly SoundEffect _shootEffect;
+    private readonly SoundEffect _rumbleEffect;
     private readonly SoundEffectInstance[] _shootInstances = new SoundEffectInstance[4];
+    private readonly SoundEffectInstance _rumbleInstance;
 
     public ProceduralAudioSystem()
     {
@@ -23,11 +25,14 @@ public sealed class ProceduralAudioSystem : IDisposable
             _shieldVoices[i] = new ShieldVoice(SampleRate, Channels, BufferSampleCount);
 
         _shootEffect = CreateShootEffect();
+        _rumbleEffect = CreateRumbleEffect();
         for (int i = 0; i < _shootInstances.Length; i++)
         {
             _shootInstances[i] = _shootEffect.CreateInstance();
             _shootInstances[i].Pan = GetPan(i);
         }
+
+        _rumbleInstance = _rumbleEffect.CreateInstance();
     }
 
     public void Update()
@@ -69,6 +74,16 @@ public sealed class ProceduralAudioSystem : IDisposable
         instance.Play();
     }
 
+    public void PlayRumble()
+    {
+        if (_rumbleInstance.State == SoundState.Playing)
+            _rumbleInstance.Stop();
+
+        _rumbleInstance.Volume = 1f;
+        _rumbleInstance.Pitch = 0f;
+        _rumbleInstance.Play();
+    }
+
     public void StopAll()
     {
         foreach (var voice in _thrustVoices)
@@ -90,7 +105,9 @@ public sealed class ProceduralAudioSystem : IDisposable
         foreach (var instance in _shootInstances)
             instance.Dispose();
 
+        _rumbleInstance.Dispose();
         _shootEffect.Dispose();
+        _rumbleEffect.Dispose();
     }
 
     private static float GetPan(int playerIndex) => playerIndex switch
@@ -125,6 +142,40 @@ public sealed class ProceduralAudioSystem : IDisposable
             float sample = filterState * envelope;
 
             WriteSample(samples, i, sample);
+        }
+
+        return new SoundEffect(samples, SampleRate, AudioChannels.Mono);
+    }
+
+    private static SoundEffect CreateRumbleEffect()
+    {
+        const float duration = 0.4f;
+        const float attackSeconds = 0.12f;
+        const float subFrequency = 52f;
+        const float filterCutoff = 0.022f;
+        const float maxVolume = 0.7f;
+
+        int sampleCount = (int)(SampleRate * duration);
+        var samples = new byte[sampleCount * 2];
+        var rng = new Random(44001);
+        float filterState = 0f;
+        double phase = 0.0;
+        double phaseStep = MathF.Tau * subFrequency / SampleRate;
+
+        for (int i = 0; i < sampleCount; i++)
+        {
+            float t = i / (float)SampleRate;
+            float envelope = t < attackSeconds
+                ? t / attackSeconds
+                : MathF.Max(0f, 1f - (t - attackSeconds) / (duration - attackSeconds));
+
+            float white = (float)(rng.NextDouble() * 2.0 - 1.0);
+            filterState += filterCutoff * (white - filterState);
+            float rumble = filterState * 0.72f + MathF.Sin((float)phase) * 0.28f;
+            float sample = rumble * envelope * maxVolume;
+
+            WriteSample(samples, i, sample);
+            phase += phaseStep;
         }
 
         return new SoundEffect(samples, SampleRate, AudioChannels.Mono);

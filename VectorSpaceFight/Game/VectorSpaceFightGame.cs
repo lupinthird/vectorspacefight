@@ -27,11 +27,6 @@ public class VectorSpaceFightGame : Microsoft.Xna.Framework.Game
     private ResultsState _resultsState = null!;
     private Ship[] _lastResults = Array.Empty<Ship>();
 
-    private bool _previousBloomDown;
-    private bool _previousBloomUp;
-    private bool _previousBloomReset;
-    private float _bloomRepeatTimer;
-
     public VectorSpaceFightGame()
     {
         _graphics = new GraphicsDeviceManager(this);
@@ -110,7 +105,6 @@ public class VectorSpaceFightGame : Microsoft.Xna.Framework.Game
             Exit();
         }
 
-        UpdateBloomTuning((float)gameTime.ElapsedGameTime.TotalSeconds);
         _currentState.Update(gameTime);
         base.Update(gameTime);
     }
@@ -118,42 +112,7 @@ public class VectorSpaceFightGame : Microsoft.Xna.Framework.Game
     protected override void Draw(GameTime gameTime)
     {
         _currentState.Draw(gameTime);
-        _renderer.DrawBloomTuner(_crtEffect.BloomIntensity);
         base.Draw(gameTime);
-    }
-
-    private void UpdateBloomTuning(float dt)
-    {
-        var keyboard = Keyboard.GetState();
-        bool bloomDown = keyboard.IsKeyDown(Keys.OemOpenBrackets);
-        bool bloomUp = keyboard.IsKeyDown(Keys.OemCloseBrackets);
-        bool bloomReset = keyboard.IsKeyDown(Keys.OemPipe);
-
-        if (bloomReset && !_previousBloomReset)
-            _crtEffect.ResetBloom();
-
-        if (bloomDown || bloomUp)
-        {
-            _bloomRepeatTimer -= dt;
-            bool initialPress = (bloomDown && !_previousBloomDown) || (bloomUp && !_previousBloomUp);
-            if (initialPress || _bloomRepeatTimer <= 0f)
-            {
-                if (bloomDown && !bloomUp)
-                    _crtEffect.AdjustBloom(-GameConstants.BloomAdjustStep);
-                else if (bloomUp && !bloomDown)
-                    _crtEffect.AdjustBloom(GameConstants.BloomAdjustStep);
-
-                _bloomRepeatTimer = initialPress ? 0.25f : 0.05f;
-            }
-        }
-        else
-        {
-            _bloomRepeatTimer = 0f;
-        }
-
-        _previousBloomDown = bloomDown;
-        _previousBloomUp = bloomUp;
-        _previousBloomReset = bloomReset;
     }
 
     protected override void UnloadContent()

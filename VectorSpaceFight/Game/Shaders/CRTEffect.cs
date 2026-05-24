@@ -9,23 +9,13 @@ public sealed class CRTEffect : IDisposable
     private readonly Effect _effect;
     private readonly VertexBuffer _vertexBuffer;
 
-    public float BloomIntensity { get; private set; } = GameConstants.BloomDefaultIntensity;
+    public float BloomIntensity { get; } = GameConstants.BloomDefaultIntensity;
 
     public CRTEffect(Effect effect, GraphicsDevice device)
     {
         _effect = effect;
         _vertexBuffer = CreateFullscreenQuad(device);
     }
-
-    public void AdjustBloom(float delta)
-    {
-        BloomIntensity = Math.Clamp(
-            BloomIntensity + delta,
-            GameConstants.BloomMinIntensity,
-            GameConstants.BloomMaxIntensity);
-    }
-
-    public void ResetBloom() => BloomIntensity = GameConstants.BloomDefaultIntensity;
 
     public void Apply(SpriteBatch spriteBatch, RenderTarget2D source, float time)
     {

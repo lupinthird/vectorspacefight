@@ -7,7 +7,7 @@ public static class GameConstants
     public const int WorldWidth = 1280;
     public const int WorldHeight = 720;
 
-    public const float MatchDurationSeconds = 30f;
+    public const float MatchDurationSeconds = 120f;
     public const float ShieldDuration = 3f;
     public const float ShieldCooldown = 10f;
     public const float SpawnShieldDuration = 3f;
@@ -16,10 +16,7 @@ public static class GameConstants
 
     public const float VectorLineIntensity = 1.22f;
 
-    public const float BloomDefaultIntensity = 3f;
-    public const float BloomAdjustStep = 0.05f;
-    public const float BloomMinIntensity = 0f;
-    public const float BloomMaxIntensity = 4f;
+    public const float BloomDefaultIntensity = 0.2f;
 
     public const float HudScoreScale = 7.5f;
     public const float HudTimerScale = 4f;
@@ -34,8 +31,13 @@ public static class GameConstants
     public const float BulletLifetime = 1.5f;
     public const float FireRate = 0.25f;
     public const int MaxActiveBulletsPerPlayer = 3;
+    public const int MaxActiveBulletsWithShield = 1;
+    public const float ShieldRadius = ShipRadius + 10f;
+    public const float ShieldBreachMinDuration = 0.15f;
 
     public const float ShipRadius = 12f;
+    public const float ShipMass = ShipRadius * ShipRadius;
+    public const float ShipShipRestitution = 0.2f;
     public const float BulletRadius = 2f;
     public const float LargeAsteroidRadius = 40f;
     public const float MediumAsteroidRadius = 24f;

@@ -23,6 +23,9 @@ public class Ship
     public float FireCooldown;
     public float LeaderHighlightTimer;
     public bool IsThrusting;
+    public bool ShieldSuppressed;
+    public float ShieldBreachTimer;
+    public Bullet? ShieldBreachBullet;
 
     public Ship(int playerIndex)
     {
@@ -46,11 +49,16 @@ public class Ship
         FireCooldown = 0f;
         LeaderHighlightTimer = 0f;
         IsThrusting = false;
+        ShieldSuppressed = false;
+        ShieldBreachTimer = 0f;
+        ShieldBreachBullet = null;
     }
 
     public Vector2 Facing => new(MathF.Sin(Rotation), -MathF.Cos(Rotation));
 
-    public bool IsInvulnerable => ShieldActive;
+    public bool HasShieldProtection => ShieldActive && !ShieldSuppressed;
+
+    public bool IsInvulnerable => HasShieldProtection;
 
     public void Kill(int killerPlayerIndex, Ship[] ships)
     {

@@ -62,24 +62,12 @@ public class GameRenderer
         _lineBatch.Flush(CreateViewProjection());
     }
 
-    public void DrawBloomTuner(float bloomIntensity)
-    {
-        _lineBatch.Begin();
-
-        const float scale = 1.5f;
-        var anchor = new Vector2(16f, GameConstants.WorldHeight - 16f);
-        var label = $"BLOOM {bloomIntensity:F2}  [ -  ] +  \\ RESET";
-        VectorFont.DrawText(_lineBatch, label, anchor, scale, Color.White * 0.45f, vAlign: VerticalAlign.Bottom);
-
-        _lineBatch.Flush(CreateViewProjection());
-    }
-
     public void DrawMatchHud(Ship[] ships, float matchTimer)
     {
         _lineBatch.Begin();
 
         VectorDigits.DrawTime(_lineBatch, matchTimer, new Vector2(GameConstants.WorldWidth * 0.5f, 24f),
-            GameConstants.HudTimerScale, Color.White * 0.55f);
+            GameConstants.HudTimerScale, Color.White * 0.5f);
 
         for (int i = 0; i < ships.Length; i++)
         {
@@ -108,43 +96,50 @@ public class GameRenderer
             .ThenBy(s => s.PlayerIndex)
             .ToArray();
 
-        const float labelGap = 0.8f;
-        const float scoreGap = 1.6f;
+        const float headerScale = 1.8f;
+        const float columnGap = 72f;
+        const float headerRowY = 168f;
+        const float rowStartY = 210f;
+        const float rowSpacing = 56f;
+        var headerColor = Color.White * 0.55f;
+        headerColor.A = 255;
+
+        float playerColumnWidth = VectorFont.MeasureText("PLAYER", headerScale);
+        float killsColumnWidth = VectorFont.MeasureText("KILLS", headerScale);
+
+        foreach (var ship in ranked)
+        {
+            playerColumnWidth = MathF.Max(playerColumnWidth, VectorFont.MeasurePlayerName(ship.PlayerIndex, rowScale));
+            killsColumnWidth = MathF.Max(killsColumnWidth, VectorDigits.MeasureWidth(ship.Kills, rowScale));
+        }
+
+        float tableWidth = playerColumnWidth + columnGap + killsColumnWidth;
+        float playerColumnX = (GameConstants.WorldWidth - tableWidth) * 0.5f;
+        float killsColumnX = playerColumnX + playerColumnWidth + columnGap;
+        float killsColumnRight = killsColumnX + killsColumnWidth;
+
+        VectorFont.DrawText(_lineBatch, "PLAYER", new Vector2(playerColumnX, headerRowY), headerScale, headerColor);
+        VectorFont.DrawText(_lineBatch, "KILLS", new Vector2(killsColumnRight, headerRowY), headerScale, headerColor,
+            HorizontalAlign.Right);
 
         for (int rank = 0; rank < ranked.Length; rank++)
         {
             var ship = ranked[rank];
-            float y = 200f + rank * 56f;
+            float y = rowStartY + rank * rowSpacing;
             var rowColor = ship.Color * (ship.PlayerIndex == winnerIndex ? 1f : 0.7f);
             rowColor.A = 255;
 
-            float rowWidth = VectorDigits.MeasureWidth(rank + 1, rowScale) +
-                             VectorFont.MeasureText(".", rowScale) +
-                             labelGap * rowScale +
-                             VectorFont.MeasureText("P", rowScale) + VectorDigits.MeasureWidth(ship.PlayerIndex + 1, rowScale) +
-                             scoreGap * rowScale +
-                             VectorFont.MeasureText("KILLS", rowScale) +
-                             scoreGap * rowScale +
-                             VectorDigits.MeasureWidth(ship.Kills, rowScale * 1.2f);
-            float x = (GameConstants.WorldWidth - rowWidth) * 0.5f;
-
-            VectorDigits.DrawNumber(_lineBatch, rank + 1, new Vector2(x, y), rowScale, rowColor);
-            x += VectorDigits.MeasureWidth(rank + 1, rowScale);
-            VectorFont.DrawText(_lineBatch, ".", new Vector2(x, y), rowScale, rowColor);
-            x += VectorFont.MeasureText(".", rowScale) + labelGap * rowScale;
-            VectorFont.DrawPlayerLabel(_lineBatch, ship.PlayerIndex, new Vector2(x, y), rowScale, rowColor);
-            x += VectorFont.MeasureText("P", rowScale) + VectorDigits.MeasureWidth(ship.PlayerIndex + 1, rowScale) + scoreGap * rowScale;
-            VectorFont.DrawText(_lineBatch, "KILLS", new Vector2(x, y), rowScale, rowColor * 0.75f);
-            x += VectorFont.MeasureText("KILLS", rowScale) + scoreGap * rowScale;
-            VectorDigits.DrawNumber(_lineBatch, ship.Kills, new Vector2(x, y), rowScale * 1.2f, rowColor);
+            VectorFont.DrawPlayerName(_lineBatch, ship.PlayerIndex, new Vector2(playerColumnX, y), rowScale, rowColor);
+            VectorDigits.DrawNumber(_lineBatch, ship.Kills, new Vector2(killsColumnRight, y), rowScale, rowColor,
+                HorizontalAlign.Right);
         }
 
         var winner = ships[winnerIndex];
         float winnerWidth = VectorFont.MeasureText("WINNER", rowScale) + rowScale +
-                            VectorFont.MeasureText("P", rowScale) + VectorDigits.MeasureWidth(winner.PlayerIndex + 1, rowScale * 1.3f);
+                            VectorFont.MeasurePlayerName(winner.PlayerIndex, rowScale * 1.3f);
         float winnerX = (GameConstants.WorldWidth - winnerWidth) * 0.5f;
         VectorFont.DrawText(_lineBatch, "WINNER", new Vector2(winnerX, 460f), rowScale, winner.Color);
-        VectorFont.DrawPlayerLabel(_lineBatch, winner.PlayerIndex,
+        VectorFont.DrawPlayerName(_lineBatch, winner.PlayerIndex,
             new Vector2(winnerX + VectorFont.MeasureText("WINNER", rowScale) + rowScale, 460f), rowScale * 1.3f, winner.Color);
 
         VectorFont.DrawText(_lineBatch, "START TO REMATCH", new Vector2(GameConstants.WorldWidth * 0.5f, 540f),
@@ -189,8 +184,8 @@ public class GameRenderer
         _lineBatch.DrawTriangle(position, ship.Rotation, 16f, glow);
         _lineBatch.DrawTriangle(position, ship.Rotation, 14f, ship.Color);
 
-        if (ship.ShieldActive)
-            _lineBatch.DrawCircle(position, GameConstants.ShipRadius + 10f, ship.Color);
+        if (ship.ShieldActive && ship.HasShieldProtection)
+            _lineBatch.DrawCircle(position, GameConstants.ShieldRadius, ship.Color);
     }
 
     private void DrawThrustFlame(Vector2 position, Ship ship, float time)

@@ -12,7 +12,7 @@ public class PlayingState : IGameState
     private readonly Action<Ship[]> _endMatch;
 
     private readonly InputSystem _inputSystem = new();
-    private readonly AsteroidSpawner _asteroidSpawner = new();
+    private readonly AsteroidSpawner _asteroidSpawner;
     private readonly DebrisSystem _debrisSystem = new();
     private readonly CollisionSystem _collisionSystem;
     private readonly Ship[] _ships;
@@ -28,7 +28,8 @@ public class PlayingState : IGameState
     {
         _context = context;
         _endMatch = endMatch;
-        _collisionSystem = new CollisionSystem(_asteroidSpawner, _debrisSystem, _debris);
+        _asteroidSpawner = new AsteroidSpawner();
+        _collisionSystem = new CollisionSystem(_asteroidSpawner, _debrisSystem, _debris, () => context.Audio.PlayRumble());
         _ships = new[]
         {
             new Ship(0),
@@ -91,15 +92,19 @@ public class PlayingState : IGameState
             if (!canControl)
                 continue;
 
-            var result = PhysicsSystem.UpdateShip(ship, inputs[i], dt, _bullets);
+            var result = PhysicsSystem.ApplyShipControl(ship, inputs[i], dt, _bullets);
             if (result.FiredShot)
                 _context.Audio.PlayShoot(i);
         }
 
+        PhysicsSystem.UpdateShieldBreaches(_ships, dt);
         PhysicsSystem.UpdateBullets(_bullets, dt);
         PhysicsSystem.UpdateAsteroids(_asteroids, dt);
         _asteroidSpawner.Update(_asteroids, dt);
         _debrisSystem.Update(_debris, dt);
+
+        _collisionSystem.Update(_ships, _bullets, _asteroids);
+        PhysicsSystem.IntegrateShips(_ships, dt);
 
         foreach (var ship in _ships)
             WrapSystem.WrapShip(ship);
@@ -170,6 +175,9 @@ public class PlayingState : IGameState
             if (ship.ShieldActiveTimer <= 0f)
             {
                 ship.ShieldActive = false;
+                ship.ShieldSuppressed = false;
+                ship.ShieldBreachTimer = 0f;
+                ship.ShieldBreachBullet = null;
                 if (!ship.IsSpawnProtection)
                     ship.ShieldCooldownTimer = GameConstants.ShieldCooldown;
                 ship.IsSpawnProtection = false;

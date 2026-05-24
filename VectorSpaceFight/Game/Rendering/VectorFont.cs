@@ -87,23 +87,24 @@ public static class VectorFont
     public static void DrawPlayerLabel(LineBatch batch, int playerIndex, Vector2 anchor, float scale, Color color,
         HorizontalAlign hAlign = HorizontalAlign.Left)
     {
-        float width = MeasureText("P", scale) + VectorDigits.MeasureWidth(playerIndex + 1, scale);
-        float x = hAlign switch
-        {
-            HorizontalAlign.Center => anchor.X - width * 0.5f,
-            HorizontalAlign.Right => anchor.X - width,
-            _ => anchor.X
-        };
+        DrawPlayerName(batch, playerIndex, anchor, scale, color, hAlign);
+    }
 
-        DrawText(batch, "P", new Vector2(x, anchor.Y), scale, color);
-        VectorDigits.DrawNumber(batch, playerIndex + 1, new Vector2(x + LetterAdvance * scale, anchor.Y), scale, color);
+    public static float MeasurePlayerName(int playerIndex, float scale)
+        => MeasureText($"PLAYER {playerIndex + 1}", scale);
+
+    public static void DrawPlayerName(LineBatch batch, int playerIndex, Vector2 anchor, float scale, Color color,
+        HorizontalAlign hAlign = HorizontalAlign.Left)
+    {
+        DrawText(batch, $"PLAYER {playerIndex + 1}", anchor, scale, color, hAlign);
     }
 
     private static Dictionary<char, (float, float, float, float)[]> BuildGlyphs()
     {
         return new Dictionary<char, (float, float, float, float)[]>
         {
-            ['A'] = Seg(L, Bot, Cx, T, Cx, T, R, Bot, 0.8f, Mid, 3.2f, Mid),
+            // Seven-segment "8" without the bottom bar — matches VectorDigits geometry.
+            ['A'] = Seg(L, T, R, T, R, T, R, UM, R, LM, R, Bot, L, LM, L, Bot, L, T, L, UM, L, Mid, R, Mid),
             ['B'] = Seg(L, Bot, L, T, L, T, R, T, R, T, R, UM, 3f, Mid, L, Mid, 3f, Mid, R, LM, R, LM, R, Bot, R, Bot, L, Bot),
             ['C'] = Seg(R, T, L, T, L, T, L, Bot, L, Bot, R, Bot),
             ['E'] = Seg(L, T, L, Bot, L, T, R, T, L, Mid, 3f, Mid, L, Bot, R, Bot),
@@ -123,6 +124,7 @@ public static class VectorFont
             ['U'] = Seg(L, T, L, 6.8f, L, 6.8f, 1f, Bot, 1f, Bot, 3f, Bot, 3f, Bot, R, 6.8f, R, 6.8f, R, T),
             ['V'] = Seg(L, T, Cx, Bot, Cx, Bot, R, T),
             ['W'] = Seg(L, T, 1f, Bot, 1f, Bot, Cx, 3.2f, Cx, 3.2f, 3f, Bot, 3f, Bot, R, T),
+            ['Y'] = Seg(L, T, Cx, Mid, R, T, Cx, Mid, Cx, Mid, Cx, Bot),
             ['.'] = Seg(Cx, 6.8f, Cx, Bot),
         };
     }

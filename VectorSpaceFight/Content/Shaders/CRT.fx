@@ -9,7 +9,7 @@
 
 float2 TextureSize;
 float Time;
-float BloomIntensity = 3.0;
+float BloomIntensity = 0.2;
 
 texture SceneTexture;
 sampler2D SceneSampler = sampler_state
