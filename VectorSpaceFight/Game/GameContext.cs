@@ -4,6 +4,7 @@ using Microsoft.Xna.Framework.Graphics;
 using VectorSpaceFight.Game.Audio;
 using VectorSpaceFight.Game.Rendering;
 using VectorSpaceFight.Game.Shaders;
+using VectorSpaceFight.Game.Systems;
 
 namespace VectorSpaceFight.Game;
 
@@ -19,4 +20,5 @@ public class GameContext
     public required RenderTarget2D SceneTarget { get; init; }
     public required ProceduralAudioSystem Audio { get; init; }
     public required VectorSpaceFightGame Game { get; init; }
+    public required InputSystem Input { get; init; }
 }

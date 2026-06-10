@@ -22,6 +22,7 @@ public class VectorSpaceFightGame : Microsoft.Xna.Framework.Game
     private ProceduralAudioSystem _audio = null!;
     private RenderSettings _renderSettings = null!;
     private ShaderTuningInput _shaderTuningInput = null!;
+    private InputSystem _inputSystem = null!;
     private GameContext _context = null!;
 
     private IGameState _currentState = null!;
@@ -83,6 +84,7 @@ public class VectorSpaceFightGame : Microsoft.Xna.Framework.Game
         _shaderTuningInput = new ShaderTuningInput();
         _lineBatch.SetRenderSettings(_renderSettings);
         _audio = new ProceduralAudioSystem();
+        _inputSystem = new InputSystem();
 
         _context = new GameContext
         {
@@ -95,7 +97,8 @@ public class VectorSpaceFightGame : Microsoft.Xna.Framework.Game
             RenderSettings = _renderSettings,
             SceneTarget = _sceneTarget,
             Audio = _audio,
-            Game = this
+            Game = this,
+            Input = _inputSystem
         };
 
         _menuState = new MenuState(_context, StartMatch);
@@ -108,16 +111,18 @@ public class VectorSpaceFightGame : Microsoft.Xna.Framework.Game
     protected override void Update(GameTime gameTime)
     {
         if (GamePad.GetState(PlayerIndex.One).Buttons.Back == ButtonState.Pressed ||
-            Keyboard.GetState().IsKeyDown(Keys.Escape) && _currentState is MenuState)
+            Keyboard.GetState().IsKeyDown(Keys.Escape))
         {
             Exit();
         }
 
         float dt = (float)gameTime.ElapsedGameTime.TotalSeconds;
+        _inputSystem.Update(dt);
         _shaderTuningInput.Update(_renderSettings);
         _renderSettings.Update(dt);
 
         _currentState.Update(gameTime);
+        _inputSystem.CaptureStartFrame();
         base.Update(gameTime);
     }
 

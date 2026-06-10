@@ -10,8 +10,6 @@ public class ResultsState : IGameState
     private readonly Ship[] _ships;
     private readonly Action _rematch;
     private readonly Action _returnToMenu;
-    private readonly bool[] _previousStart = new bool[4];
-    private bool _previousKeyboardStart;
     private float _elapsedTime;
 
     public ResultsState(GameContext context, Ship[] ships, Action rematch, Action returnToMenu)
@@ -35,29 +33,8 @@ public class ResultsState : IGameState
     {
         _elapsedTime += (float)gameTime.ElapsedGameTime.TotalSeconds;
 
-        if (Keyboard.GetState().IsKeyDown(Keys.Escape))
-        {
-            _returnToMenu();
-            return;
-        }
-
-        for (int i = 0; i < 4; i++)
-        {
-            var pad = GamePad.GetState((PlayerIndex)i);
-            bool startDown = pad.IsConnected && pad.Buttons.Start == ButtonState.Pressed;
-            if (startDown && !_previousStart[i])
-            {
-                _rematch();
-                return;
-            }
-
-            _previousStart[i] = startDown;
-        }
-
-        bool keyboardStart = Keyboard.GetState().IsKeyDown(Keys.Enter);
-        if (keyboardStart && !_previousKeyboardStart)
+        if (_context.Input.WasStartPressed())
             _rematch();
-        _previousKeyboardStart = keyboardStart;
     }
 
     public void Draw(GameTime gameTime)

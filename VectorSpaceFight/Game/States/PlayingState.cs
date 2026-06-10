@@ -11,7 +11,6 @@ public class PlayingState : IGameState
     private readonly GameContext _context;
     private readonly Action<Ship[]> _endMatch;
 
-    private readonly InputSystem _inputSystem = new();
     private readonly AsteroidSpawner _asteroidSpawner;
     private readonly DebrisSystem _debrisSystem = new();
     private readonly CollisionSystem _collisionSystem;
@@ -59,6 +58,7 @@ public class PlayingState : IGameState
         _debris.Clear();
         _asteroidSpawner.Reset(_asteroids);
         _leaderPlayerIndex = -1;
+        _context.Input.RequestAllSpinnerHeadingSync();
     }
 
     public void Exit()
@@ -78,7 +78,10 @@ public class PlayingState : IGameState
             return;
         }
 
-        var inputs = _inputSystem.ReadInput();
+        for (int i = 0; i < _ships.Length; i++)
+            _context.Input.SyncSpinnerHeadingIfNeeded(i, _ships[i].Rotation);
+
+        var inputs = _context.Input.ReadInput();
 
         for (int i = 0; i < _ships.Length; i++)
         {
@@ -158,7 +161,7 @@ public class PlayingState : IGameState
         _context.Renderer.DrawShaderTuningHud(_context.RenderSettings);
     }
 
-    private static void UpdateRespawn(Ship ship, float dt)
+    private void UpdateRespawn(Ship ship, float dt)
     {
         if (ship.IsAlive)
             return;
@@ -171,6 +174,7 @@ public class PlayingState : IGameState
         ship.ShieldActive = true;
         ship.ShieldActiveTimer = GameConstants.SpawnShieldDuration;
         ship.IsSpawnProtection = true;
+        _context.Input.RequestSpinnerHeadingSync(ship.PlayerIndex);
     }
 
     private static void UpdateShield(Ship ship, bool shieldPressed, float dt)

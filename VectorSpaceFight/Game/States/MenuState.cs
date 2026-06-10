@@ -7,8 +7,6 @@ public class MenuState : IGameState
 {
     private readonly GameContext _context;
     private readonly Action _startMatch;
-    private readonly bool[] _previousStart = new bool[4];
-    private bool _previousKeyboardStart;
     private float _elapsedTime;
 
     public MenuState(GameContext context, Action startMatch)
@@ -30,26 +28,8 @@ public class MenuState : IGameState
     {
         _elapsedTime += (float)gameTime.ElapsedGameTime.TotalSeconds;
 
-        if (Keyboard.GetState().IsKeyDown(Keys.Escape))
-            _context.Game.Exit();
-
-        for (int i = 0; i < 4; i++)
-        {
-            var pad = GamePad.GetState((PlayerIndex)i);
-            bool startDown = pad.IsConnected && pad.Buttons.Start == ButtonState.Pressed;
-            if (startDown && !_previousStart[i])
-            {
-                _startMatch();
-                return;
-            }
-
-            _previousStart[i] = startDown;
-        }
-
-        bool keyboardStart = Keyboard.GetState().IsKeyDown(Keys.Enter);
-        if (keyboardStart && !_previousKeyboardStart)
+        if (_context.Input.WasStartPressed())
             _startMatch();
-        _previousKeyboardStart = keyboardStart;
     }
 
     public void Draw(GameTime gameTime)
