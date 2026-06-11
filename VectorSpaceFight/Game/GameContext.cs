@@ -21,4 +21,5 @@ public class GameContext
     public required ProceduralAudioSystem Audio { get; init; }
     public required VectorSpaceFightGame Game { get; init; }
     public required InputSystem Input { get; init; }
+    public GameSession Session { get; } = new();
 }

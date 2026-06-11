@@ -92,7 +92,7 @@ public class PlayingState : IGameState
             if (ship.LeaderHighlightTimer > 0f)
                 ship.LeaderHighlightTimer -= dt;
 
-            bool canControl = ship.IsAlive && inputs[i].Connected;
+            bool canControl = ship.IsAlive && inputs[i].Connected && _context.Session.IsHuman[i];
             ship.IsThrusting = canControl && inputs[i].Thrust;
             _context.Audio.UpdateThrust(i, ship.IsThrusting, canControl);
             _context.Audio.UpdateShield(i, ship.ShieldActive && !ship.IsSpawnProtection && ship.IsAlive);

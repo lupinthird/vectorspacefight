@@ -150,25 +150,98 @@ public class GameRenderer
         _lineBatch.Flush(CreateViewProjection());
     }
 
-    public void DrawMenu(float time)
+    public void DrawMenu(float time, InputSystem input)
     {
         _lineBatch.Begin();
 
-        float pulse = 0.5f + MathF.Sin(time * 3f) * 0.5f;
-        var center = new Vector2(GameConstants.WorldWidth * 0.5f, GameConstants.WorldHeight * 0.5f);
+        const float titleScale = 2.8f;
+        const float rowScale = 1.6f;
+        const float statusScale = 1.5f;
+        const float rowSpacing = 34f;
+        var cx = GameConstants.WorldWidth * 0.5f;
+        var startY = 72f;
 
-        _lineBatch.DrawLine(center + new Vector2(-18, 0), center + new Vector2(18, 0), Color.White * pulse);
-        _lineBatch.DrawLine(center + new Vector2(0, -18), center + new Vector2(0, 18), Color.White * pulse);
+        VectorFont.DrawText(_lineBatch, "VECTOR SPACE FIGHT", new Vector2(cx, startY),
+            titleScale, Color.White * 0.85f, HorizontalAlign.Center);
+        startY += 56f;
 
-        for (int i = 0; i < 4; i++)
+        for (var i = 0; i < PlayerRoster.Count; i++)
         {
-            var anchor = GameConstants.GetQuadrantScoreAnchor(i);
-            var hAlign = i is 1 or 3 ? HorizontalAlign.Right : HorizontalAlign.Left;
-            var vAlign = i is 2 or 3 ? VerticalAlign.Bottom : VerticalAlign.Top;
-            _lineBatch.DrawTriangle(GetCornerTriangleCenter(anchor, hAlign, vAlign), GetCornerRotation(i), 12f, GameConstants.PlayerColors[i] * 0.8f);
+            var rowY = startY + i * rowSpacing;
+            var claimed = input.IsSlotAssigned(i);
+            var identified = input.IsSlotColorIdentified(i);
+            var pulse = claimed
+                ? MathF.Max(input.GetSlotActivityPulse(i), identified ? 0.35f : 0.2f)
+                : 0f;
+            var textColor = input.GetSlotTextColor(i);
+            var indicatorColor = claimed
+                ? (identified ? textColor : PlayerPalette.MenuSlotGray) * (0.55f + pulse * 0.35f)
+                : PlayerPalette.MenuSlotGray * 0.28f;
+
+            DrawClaimIndicator(new Vector2(cx - 220f, rowY), pulse, indicatorColor);
+
+            string label;
+            if (claimed)
+            {
+                var status = input.GetSlotDisplayLabel(i);
+                if (string.IsNullOrWhiteSpace(status))
+                    status = "Identifying...";
+
+                var rosterTag = input.GetAssignedPlayerIndex(i) is int rosterIndex
+                    ? $" - {PlayerRoster.ColorNames[rosterIndex]}"
+                    : string.Empty;
+                var menuTag = input.IsMenuControllerSlot(i) ? " - MENU" : string.Empty;
+                label = $"SLOT {i + 1} - {status}{rosterTag}{menuTag}";
+            }
+            else
+            {
+                label = $"SLOT {i + 1} - MOVE TO CLAIM";
+            }
+
+            VectorFont.DrawText(_lineBatch, label, new Vector2(cx - 180f, rowY), rowScale, textColor);
         }
 
+        string message;
+        Color messageColor;
+        if (input.ClaimedControllerCount == 0)
+        {
+            message = "MOVE A CONTROLLER TO TAKE CHARGE OF THIS MENU";
+            messageColor = Color.White * 0.7f;
+        }
+        else if (input.CanStartGame())
+        {
+            message = "MENU CONTROLLER: BUTTON 1 TO START";
+            messageColor = input.GetSlotTextColor(0);
+        }
+        else
+        {
+            message = "MOVE TO CLAIM - WAITING FOR PLAYERS";
+            messageColor = Color.White * 0.55f;
+        }
+
+        VectorFont.DrawText(_lineBatch, message, new Vector2(cx, startY + PlayerRoster.Count * rowSpacing + 24f),
+            statusScale, messageColor, HorizontalAlign.Center);
+
         _lineBatch.Flush(CreateViewProjection());
+    }
+
+    private void DrawClaimIndicator(Vector2 center, float pulse, Color color)
+    {
+        pulse = MathHelper.Clamp(pulse, 0f, 1f);
+        if (pulse <= 0.01f)
+        {
+            _lineBatch.DrawCircle(center, 6f, color * 0.35f, 16);
+            return;
+        }
+
+        var bright = color * (0.55f + pulse * 0.45f);
+        _lineBatch.DrawCircle(center, 6f + pulse * 4f, bright, 24);
+        for (var i = 0; i < 4; i++)
+        {
+            var angle = i * MathHelper.PiOver2 + pulse * MathHelper.TwoPi;
+            var dir = new Vector2(MathF.Cos(angle), MathF.Sin(angle));
+            _lineBatch.DrawLine(center, center + dir * (10f + pulse * 8f), bright);
+        }
     }
 
     private void DrawShip(Ship ship, Vector2 offset, float time)

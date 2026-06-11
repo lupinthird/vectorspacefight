@@ -1,4 +1,5 @@
 using Microsoft.Xna.Framework;
+using VectorSpaceFight.Game.Systems;
 
 namespace VectorSpaceFight.Game.Constants;
 
@@ -47,13 +48,7 @@ public static class GameConstants
     public const float AsteroidSpawnInterval = 15f;
     public const float WrapGhostMargin = 60f;
 
-    public static readonly Color[] PlayerColors =
-    {
-        new(0, 255, 255),
-        new(255, 72, 72),
-        new(255, 255, 64),
-        new(72, 255, 72)
-    };
+    public static Color[] PlayerColors => PlayerPalette.PlayerColors;
 
     public static Vector2 GetSpawnPosition(int playerIndex)
     {

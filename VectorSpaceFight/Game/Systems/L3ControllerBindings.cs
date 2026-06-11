@@ -3,13 +3,12 @@ using L3Controller.Input;
 namespace VectorSpaceFight.Game.Systems;
 
 /// <summary>
-/// L3 controller slot assignment and axis/button polling for up to four players.
-/// Controllers claim open slots on first activity; rotation locks to whichever
-/// HID axis (Z spinner vs Rz paddle) moves from the initial baseline.
+/// L3 controller claim-order slots and roster-color player assignment.
+/// Claim slots fill top-to-bottom; roster binding waits for firmware serial color.
 /// </summary>
 public sealed class L3ControllerBindings
 {
-    public const int MaxSlots = 4;
+    public const int MaxSlots = PlayerRoster.Count;
 
     private enum RotationAxisKind
     {
@@ -18,16 +17,17 @@ public sealed class L3ControllerBindings
     }
 
     private readonly ControllerManager _manager;
+    private readonly TrackedController?[] _playerAssignments = new TrackedController?[MaxSlots];
     private readonly string?[] _boundDeviceIds = new string?[MaxSlots];
     private readonly RotationAxisKind?[] _lockedRotationAxis = new RotationAxisKind?[MaxSlots];
     private readonly bool[] _rotationAxisLockChanged = new bool[MaxSlots];
+    private readonly float[] _slotActivityPulse = new float[MaxSlots];
+
+    private string? _menuControllerDeviceId;
 
     public L3ControllerBindings()
     {
-        _manager = new ControllerManager(maxSlots: MaxSlots)
-        {
-            AutoClaimEnabled = false
-        };
+        _manager = new ControllerManager(maxSlots: MaxSlots);
 
         if (OperatingSystem.IsWindows())
             _manager.Initialize();
@@ -35,26 +35,96 @@ public sealed class L3ControllerBindings
 
     public int ClaimedCount => _manager.ClaimedCount;
 
-    public bool IsSlotConnected(int slot) =>
-        slot >= 0 && slot < MaxSlots && _manager.GetSlot(slot) != null;
+    public bool IsPlayerConnected(int playerIndex) => GetPlayerController(playerIndex) != null;
 
-    public TrackedController? GetSlot(int slot) => _manager.GetSlot(slot);
+    public TrackedController? GetClaimSlot(int claimIndex) => _manager.GetSlot(claimIndex);
 
-    public bool SlotBindingChanged(int slot) =>
-        slot >= 0
-        && slot < MaxSlots
-        && _manager.GetSlot(slot) is TrackedController tracked
-        && tracked.Id != _boundDeviceIds[slot];
+    public TrackedController? GetPlayerController(int playerIndex) =>
+        playerIndex >= 0 && playerIndex < _playerAssignments.Length
+            ? _playerAssignments[playerIndex]
+            : null;
 
-    public bool ConsumeRotationAxisLockChange(int slot)
+    public bool IsSlotAssigned(int claimIndex) => GetClaimSlot(claimIndex) != null;
+
+    public bool IsSlotColorIdentified(int claimIndex)
     {
-        if (slot < 0 || slot >= MaxSlots)
+        var tracked = GetClaimSlot(claimIndex);
+        return tracked != null && RosterColor.TryGetPlayerIndexFromSerial(tracked, out _);
+    }
+
+    public int? GetAssignedPlayerIndex(int claimIndex)
+    {
+        var tracked = GetClaimSlot(claimIndex);
+        if (tracked == null)
+            return null;
+
+        return RosterColor.TryGetPlayerIndexFromSerial(tracked, out var playerIndex)
+            ? playerIndex
+            : null;
+    }
+
+    public string GetSlotDisplayLabel(int claimIndex)
+    {
+        var tracked = GetClaimSlot(claimIndex);
+        if (tracked == null)
+            return string.Empty;
+
+        if (tracked.TryGetDeviceInfo(out var info))
+            return info.DisplayName;
+
+        if (tracked.IsL3Device
+            && !string.IsNullOrWhiteSpace(tracked.ClaimLabel)
+            && !tracked.ClaimLabel.Equals("Controller", StringComparison.OrdinalIgnoreCase))
+        {
+            return tracked.ClaimLabel;
+        }
+
+        if (L3ControllerIdentity.IsL3SerialNumber(tracked.DeviceSerialNumber))
+            return L3ControllerIdentity.FormatDisplayNameFromSerial(tracked.DeviceSerialNumber);
+
+        return string.Empty;
+    }
+
+    public bool IsMenuControllerSlot(int claimIndex) =>
+        claimIndex == 0 && IsSlotAssigned(0);
+
+    public float GetSlotActivityPulse(int claimIndex) =>
+        claimIndex >= 0 && claimIndex < _slotActivityPulse.Length
+            ? _slotActivityPulse[claimIndex]
+            : 0f;
+
+    public bool CanStartGame() =>
+        ClaimedCount >= 1 && _menuControllerDeviceId != null;
+
+    public bool PlayerBindingChanged(int playerIndex) =>
+        playerIndex >= 0
+        && playerIndex < MaxSlots
+        && GetPlayerController(playerIndex) is TrackedController tracked
+        && tracked.Id != _boundDeviceIds[playerIndex];
+
+    public bool ConsumeRotationAxisLockChange(int playerIndex)
+    {
+        if (playerIndex < 0 || playerIndex >= MaxSlots)
             return false;
 
-        var changed = _rotationAxisLockChanged[slot];
-        _rotationAxisLockChanged[slot] = false;
+        var changed = _rotationAxisLockChanged[playerIndex];
+        _rotationAxisLockChanged[playerIndex] = false;
         return changed;
     }
+
+    public void ResetMenuSetup()
+    {
+        _manager.ResetClaims();
+        _menuControllerDeviceId = null;
+        Array.Clear(_playerAssignments, 0, _playerAssignments.Length);
+        Array.Clear(_boundDeviceIds, 0, _boundDeviceIds.Length);
+        Array.Clear(_lockedRotationAxis, 0, _lockedRotationAxis.Length);
+        Array.Clear(_rotationAxisLockChanged, 0, _rotationAxisLockChanged.Length);
+        Array.Clear(_slotActivityPulse, 0, _slotActivityPulse.Length);
+    }
+
+    public void ApplyClaimsToSession(GameSession session) =>
+        session.ApplyClaimedSlots(IsPlayerConnected);
 
     public void Update(float deltaSeconds)
     {
@@ -62,35 +132,49 @@ public sealed class L3ControllerBindings
             return;
 
         _manager.Update(deltaSeconds);
-        ClaimControllersOnActivity();
+        RefreshPlayerAssignments();
+        TrackMenuController();
+        DecayActivityPulse(deltaSeconds);
 
-        for (var slot = 0; slot < MaxSlots; slot++)
+        for (var playerIndex = 0; playerIndex < MaxSlots; playerIndex++)
         {
-            var tracked = _manager.GetSlot(slot);
-            if (tracked?.Id != _boundDeviceIds[slot])
-                _lockedRotationAxis[slot] = null;
+            var tracked = GetPlayerController(playerIndex);
+            if (tracked?.Id != _boundDeviceIds[playerIndex])
+                _lockedRotationAxis[playerIndex] = null;
 
-            EnsureRotationAxisLocked(slot);
-            _boundDeviceIds[slot] = tracked?.Id;
+            EnsureRotationAxisLocked(playerIndex);
+            _boundDeviceIds[playerIndex] = tracked?.Id;
+        }
+
+        for (var claimIndex = 0; claimIndex < MaxSlots; claimIndex++)
+        {
+            var claimTracked = GetClaimSlot(claimIndex);
+            if (claimTracked == null)
+            {
+                _slotActivityPulse[claimIndex] = 0f;
+                continue;
+            }
+
+            UpdateClaimSlotActivity(claimIndex, claimTracked);
         }
     }
 
-    public bool TryGetRotationAxisPosition(int slot, out float axis)
+    public bool TryGetRotationAxisPosition(int playerIndex, out float axis)
     {
         axis = 0f;
-        if (slot < 0 || slot >= MaxSlots)
+        if (playerIndex < 0 || playerIndex >= MaxSlots)
             return false;
 
-        var tracked = _manager.GetSlot(slot);
-        if (tracked == null || _lockedRotationAxis[slot] is not RotationAxisKind locked)
+        var tracked = GetPlayerController(playerIndex);
+        if (tracked == null || _lockedRotationAxis[playerIndex] is not RotationAxisKind locked)
             return false;
 
         return ReadLockedRotationAxis(tracked, locked, out axis);
     }
 
-    public bool WasButtonPressed(int slot, int buttonIndex)
+    public bool WasButtonPressed(int playerIndex, int buttonIndex)
     {
-        var tracked = _manager.GetSlot(slot);
+        var tracked = GetPlayerController(playerIndex);
         if (tracked?.Previous == null || buttonIndex < 0)
             return false;
 
@@ -103,20 +187,31 @@ public sealed class L3ControllerBindings
             && (buttonIndex >= previous.Length || !previous[buttonIndex]);
     }
 
-    public bool IsButtonHeld(int slot, int buttonIndex)
+    public bool IsButtonHeld(int playerIndex, int buttonIndex)
     {
-        var tracked = _manager.GetSlot(slot);
+        var tracked = GetPlayerController(playerIndex);
         return tracked != null
             && buttonIndex >= 0
             && buttonIndex < tracked.Current.Buttons.Length
             && tracked.Current.Buttons[buttonIndex];
     }
 
-    public bool WasAnyButtonPressed(int buttonIndex)
+    public bool WasMenuConfirmPressed()
     {
-        for (var slot = 0; slot < MaxSlots; slot++)
+        if (!CanStartGame() || _menuControllerDeviceId == null)
+            return false;
+
+        if (_manager.FindById(_menuControllerDeviceId) is not TrackedController menuController)
+            return false;
+
+        return WasFirePressed(menuController);
+    }
+
+    public bool WasAnyHumanButtonPressed(int buttonIndex)
+    {
+        for (var playerIndex = 0; playerIndex < MaxSlots; playerIndex++)
         {
-            if (WasButtonPressed(slot, buttonIndex))
+            if (IsPlayerConnected(playerIndex) && WasButtonPressed(playerIndex, buttonIndex))
                 return true;
         }
 
@@ -129,93 +224,128 @@ public sealed class L3ControllerBindings
         return fromName != DeviceProfile.Unknown ? fromName : tracked.Profile;
     }
 
-    /// <summary>
-    /// Maps normalized rotation axis (-1..1, one revolution) to ship heading radians.
-    /// </summary>
     public static float MapRotationAxisToHeading(float normalizedAxis) =>
         normalizedAxis * MathF.PI;
 
-    private void ClaimControllersOnActivity()
+    private void RefreshPlayerAssignments()
     {
-        foreach (var controller in _manager.AllControllers)
+        Array.Clear(_playerAssignments, 0, _playerAssignments.Length);
+        var fallbackByClaimOrder = new List<(int ClaimIndex, TrackedController Controller)>();
+
+        for (var claimIndex = 0; claimIndex < MaxSlots; claimIndex++)
         {
-            if (controller.SlotIndex.HasValue || !controller.HasBaseline)
+            var controller = GetClaimSlot(claimIndex);
+            if (controller == null)
                 continue;
 
-            if (!HasClaimActivity(controller))
+            if (RosterColor.TryGetPlayerIndexFromSerial(controller, out var colorSlot))
+            {
+                if (_playerAssignments[colorSlot] == null)
+                    _playerAssignments[colorSlot] = controller;
+                continue;
+            }
+
+            if (IsAwaitingSerialIdentity(controller))
                 continue;
 
-            var slot = FindNextOpenSlot();
-            if (slot < 0)
+            fallbackByClaimOrder.Add((claimIndex, controller));
+        }
+
+        var freeSlots = new Queue<int>();
+        for (var playerIndex = 0; playerIndex < MaxSlots; playerIndex++)
+        {
+            if (_playerAssignments[playerIndex] == null)
+                freeSlots.Enqueue(playerIndex);
+        }
+
+        foreach (var (claimIndex, controller) in fallbackByClaimOrder.OrderBy(entry => entry.ClaimIndex))
+        {
+            if (freeSlots.Count == 0)
                 break;
 
-            if (!_manager.TryAssignToSlot(controller, slot))
-                continue;
-
-            controller.SourcesLocked = false;
-            controller.SpinnerSource = SpinnerSourceKind.None;
-            controller.PaddleSource = PaddleSourceKind.None;
+            _playerAssignments[freeSlots.Dequeue()] = controller;
         }
     }
 
-    private int FindNextOpenSlot()
-    {
-        for (var slot = 0; slot < MaxSlots; slot++)
-        {
-            if (_manager.GetSlot(slot) == null)
-                return slot;
-        }
+    private static bool IsAwaitingSerialIdentity(TrackedController controller) =>
+        controller.Profile != DeviceProfile.GenericGamepad
+        && string.IsNullOrWhiteSpace(controller.DeviceSerialNumber);
 
-        return -1;
-    }
-
-    private void EnsureRotationAxisLocked(int slot)
+    private void TrackMenuController()
     {
-        if (_lockedRotationAxis[slot].HasValue)
+        if (_menuControllerDeviceId != null)
             return;
 
-        var tracked = _manager.GetSlot(slot);
+        var firstClaimed = _manager.GetSlot(0);
+        if (firstClaimed != null)
+            _menuControllerDeviceId = firstClaimed.Id;
+    }
+
+    private void EnsureRotationAxisLocked(int playerIndex)
+    {
+        if (_lockedRotationAxis[playerIndex].HasValue)
+            return;
+
+        var tracked = GetPlayerController(playerIndex);
         if (tracked == null)
             return;
 
         if (!TryDetectDominantRotationAxis(tracked, out var kind))
             return;
 
-        _lockedRotationAxis[slot] = kind;
+        _lockedRotationAxis[playerIndex] = kind;
         ApplyRotationSourceLock(tracked, kind);
-        _rotationAxisLockChanged[slot] = true;
+        _rotationAxisLockChanged[playerIndex] = true;
     }
 
-    private static bool HasClaimActivity(TrackedController tracked)
+    private static bool WasFirePressed(TrackedController controller)
     {
-        if (UsesL3RotationAxes(tracked))
-            return TryDetectDominantRotationAxis(tracked, out _);
-
-        if (InputMapping.DetectButtonActivity(tracked.Current.Buttons, tracked.Previous?.Buttons))
-            return true;
-
-        if (ResolveProfile(tracked) != DeviceProfile.GenericGamepad)
+        var current = controller.Current;
+        var previous = controller.Previous;
+        if (previous == null || current.Buttons.Length == 0)
             return false;
 
-        var current = tracked.Current;
-        var baseline = tracked.Baseline;
-
-        if (InputMapping.DetectStickChangeFromBaseline(
-                current.LeftStick, baseline.LeftStick, InputMapping.ActivityThreshold))
-            return true;
-
-        if (InputMapping.DetectStickChangeFromBaseline(
-                current.RightStick, baseline.RightStick, InputMapping.ActivityThreshold))
-            return true;
-
-        return MathF.Abs(current.LeftTrigger - baseline.LeftTrigger) > InputMapping.ActivityThreshold
-            || MathF.Abs(current.RightTrigger - baseline.RightTrigger) > InputMapping.ActivityThreshold;
+        var fireNow = current.Buttons[0];
+        var firePrev = previous.Buttons.Length > 0 && previous.Buttons[0];
+        return fireNow && !firePrev;
     }
 
-    private static bool UsesL3RotationAxes(TrackedController tracked) =>
-        tracked.RawController != null
-        || tracked.JoystickIndex.HasValue
-        || L3ControllerIdentity.IsL3ControllerName(tracked.DisplayName);
+    private void UpdateClaimSlotActivity(int claimIndex, TrackedController tracked)
+    {
+        if (tracked.Previous?.RawZ is float prevZ && tracked.Current.RawZ is float currentZ)
+        {
+            var spinMotion = MathF.Abs(L3ControllerIdentity.ComputeWrapAwareDelta(currentZ, prevZ));
+            if (spinMotion >= 0.002f)
+            {
+                _slotActivityPulse[claimIndex] = MathF.Min(1f, _slotActivityPulse[claimIndex] + spinMotion * 5f);
+                return;
+            }
+        }
+
+        if (tracked.Previous?.RawRz is float prevRz && tracked.Current.RawRz is float currentRz)
+        {
+            var potMotion = MathF.Abs(L3ControllerIdentity.ComputeWrapAwareDelta(currentRz, prevRz));
+            if (potMotion >= 0.018f)
+                _slotActivityPulse[claimIndex] = MathF.Min(1f, _slotActivityPulse[claimIndex] + potMotion * 5f);
+        }
+    }
+
+    private void DecayActivityPulse(float deltaSeconds)
+    {
+        var decay = MathF.Pow(0.02f, deltaSeconds);
+        for (var i = 0; i < MaxSlots; i++)
+        {
+            if (!IsSlotAssigned(i))
+            {
+                _slotActivityPulse[i] = 0f;
+                continue;
+            }
+
+            _slotActivityPulse[i] *= decay;
+            if (_slotActivityPulse[i] < 0.02f)
+                _slotActivityPulse[i] = 0f;
+        }
+    }
 
     private static bool TryDetectDominantRotationAxis(TrackedController tracked, out RotationAxisKind kind)
     {

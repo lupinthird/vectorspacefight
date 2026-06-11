@@ -18,6 +18,7 @@ public class MenuState : IGameState
     public void Enter()
     {
         _elapsedTime = 0f;
+        _context.Input.ResetMenuSetup();
     }
 
     public void Exit()
@@ -28,8 +29,14 @@ public class MenuState : IGameState
     {
         _elapsedTime += (float)gameTime.ElapsedGameTime.TotalSeconds;
 
-        if (_context.Input.WasStartPressed())
+        if (!_context.Input.CanStartGame())
+            return;
+
+        if (_context.Input.WasMenuConfirmPressed())
+        {
+            _context.Input.ApplyClaimsToSession(_context.Session);
             _startMatch();
+        }
     }
 
     public void Draw(GameTime gameTime)
@@ -38,7 +45,7 @@ public class MenuState : IGameState
         device.SetRenderTarget(_context.SceneTarget);
         device.Clear(Color.Black);
 
-        _context.Renderer.DrawMenu(_elapsedTime);
+        _context.Renderer.DrawMenu(_elapsedTime, _context.Input);
         _context.PostProcess.Apply(_context.SpriteBatch, _context.SceneTarget, _elapsedTime, _context.RenderSettings);
         _context.Renderer.DrawShaderTuningHud(_context.RenderSettings);
     }
