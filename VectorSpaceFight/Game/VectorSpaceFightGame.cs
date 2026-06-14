@@ -1,6 +1,7 @@
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
+using VectorSpaceFight.Config;
 using VectorSpaceFight.Game.Audio;
 using VectorSpaceFight.Game.Constants;
 using VectorSpaceFight.Game.Entities;
@@ -13,6 +14,7 @@ namespace VectorSpaceFight.Game;
 
 public class VectorSpaceFightGame : Microsoft.Xna.Framework.Game
 {
+    private readonly GameConfig _config;
     private GraphicsDeviceManager _graphics;
     private SpriteBatch _spriteBatch = null!;
     private LineBatch _lineBatch = null!;
@@ -33,32 +35,44 @@ public class VectorSpaceFightGame : Microsoft.Xna.Framework.Game
 
     public VectorSpaceFightGame()
     {
+        _config = GameConfig.Load();
         _graphics = new GraphicsDeviceManager(this);
         Content.RootDirectory = "Content";
         IsMouseVisible = false;
-        IsFixedTimeStep = true;
-        TargetElapsedTime = TimeSpan.FromSeconds(1.0 / 60.0);
+
+        if (_config.Display.Force60Hz)
+        {
+            IsFixedTimeStep = true;
+            TargetElapsedTime = TimeSpan.FromSeconds(1.0 / 60.0);
+        }
     }
 
     protected override void Initialize()
     {
-        ConfigureFullscreenDisplay();
+        ConfigureDisplay();
         base.Initialize();
     }
 
-    private void ConfigureFullscreenDisplay()
+    private void ConfigureDisplay()
     {
         var display = GraphicsAdapter.DefaultAdapter.CurrentDisplayMode;
-        int width = display.Width;
-        int height = width * 9 / 16;
-        if (height > display.Height)
+        int width = _config.Display.Width;
+        int height = _config.Display.Height;
+
+        if (width <= 0 || height <= 0)
         {
-            height = display.Height;
-            width = height * 16 / 9;
+            width = display.Width;
+            height = width * 9 / 16;
+            if (height > display.Height)
+            {
+                height = display.Height;
+                width = height * 16 / 9;
+            }
         }
 
         _graphics.HardwareModeSwitch = false;
-        _graphics.IsFullScreen = true;
+        _graphics.IsFullScreen = _config.Display.Fullscreen;
+        _graphics.SynchronizeWithVerticalRetrace = _config.Display.Vsync;
         _graphics.PreferredBackBufferWidth = width;
         _graphics.PreferredBackBufferHeight = height;
         _graphics.ApplyChanges();
@@ -77,10 +91,14 @@ public class VectorSpaceFightGame : Microsoft.Xna.Framework.Game
             SurfaceFormat.Color,
             DepthFormat.None);
 
-        var postShader = Content.Load<Effect>("Shaders/CRT");
-        _postProcess = new PostProcessEffect(postShader, GraphicsDevice);
         _renderSettings = new RenderSettings();
-        _renderSettings.MarkHudVisible();
+        _renderSettings.ApplyFromConfig(_config.Rendering);
+
+        Effect? postShader = null;
+        if (_renderSettings.PostProcessEnabled)
+            postShader = Content.Load<Effect>("Shaders/CRT");
+
+        _postProcess = new PostProcessEffect(postShader, GraphicsDevice);
         _shaderTuningInput = new ShaderTuningInput();
         _lineBatch.SetRenderSettings(_renderSettings);
         _audio = new ProceduralAudioSystem();
@@ -88,6 +106,7 @@ public class VectorSpaceFightGame : Microsoft.Xna.Framework.Game
 
         _context = new GameContext
         {
+            Config = _config,
             GraphicsDevice = GraphicsDevice,
             Content = Content,
             SpriteBatch = _spriteBatch,

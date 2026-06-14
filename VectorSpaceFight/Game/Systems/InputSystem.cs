@@ -50,6 +50,9 @@ public class InputSystem
 
     public bool WasMenuConfirmPressed() => _l3.WasMenuConfirmPressed();
 
+    public bool TryConsumeMenuExitHold(float deltaSeconds, bool enabled) =>
+        _l3.TryConsumeMenuExitHold(deltaSeconds, enabled);
+
     public void ApplyClaimsToSession(GameSession session) => _l3.ApplyClaimsToSession(session);
 
     public bool IsSlotAssigned(int claimIndex) => _l3.IsSlotAssigned(claimIndex);

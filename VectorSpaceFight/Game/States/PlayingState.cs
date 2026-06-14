@@ -155,7 +155,7 @@ public class PlayingState : IGameState
 
         _context.Renderer.DrawWorld(_ships, _bullets, _asteroids, _debris, _elapsedTime);
 
-        _context.PostProcess.Apply(_context.SpriteBatch, _context.SceneTarget, _elapsedTime, _context.RenderSettings);
+        _context.PostProcess.Present(_context.SpriteBatch, _context.SceneTarget, _elapsedTime, _context.RenderSettings);
         _context.Renderer.DrawLeaderHighlights(_ships, _elapsedTime);
         _context.Renderer.DrawMatchHud(_ships, _matchTimer);
         _context.Renderer.DrawShaderTuningHud(_context.RenderSettings);

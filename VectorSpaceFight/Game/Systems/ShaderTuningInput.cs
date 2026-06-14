@@ -63,7 +63,8 @@ public sealed class ShaderTuningInput
             else
                 settings.ApplyNeonDefaults();
 
-            settings.MarkHudVisible();
+            if (settings.ShowShaderHud)
+                settings.MarkHudVisible();
         }
 
         for (int i = 0; i < _previousKeys.Length; i++)
@@ -81,12 +82,14 @@ public sealed class ShaderTuningInput
     private static void Toggle(RenderSettings settings, Action<RenderSettings> toggle)
     {
         toggle(settings);
-        settings.MarkHudVisible();
+        if (settings.ShowShaderHud)
+            settings.MarkHudVisible();
     }
 
     private static void Adjust(RenderSettings settings, Action<RenderSettings> adjust)
     {
         adjust(settings);
-        settings.MarkHudVisible();
+        if (settings.ShowShaderHud)
+            settings.MarkHudVisible();
     }
 }

@@ -6,18 +6,33 @@ namespace VectorSpaceFight.Game.Shaders;
 
 public sealed class PostProcessEffect : IDisposable
 {
-    private readonly Effect _effect;
-    private readonly VertexBuffer _vertexBuffer;
+    private readonly Effect? _effect;
+    private readonly VertexBuffer? _vertexBuffer;
 
-    public PostProcessEffect(Effect effect, GraphicsDevice device)
+    public PostProcessEffect(Effect? effect, GraphicsDevice device)
     {
         _effect = effect;
-        _vertexBuffer = CreateFullscreenQuad(device);
+        _vertexBuffer = effect != null ? CreateFullscreenQuad(device) : null;
     }
 
-    public void Apply(SpriteBatch spriteBatch, RenderTarget2D source, float time, RenderSettings settings)
+    public void Present(SpriteBatch spriteBatch, RenderTarget2D source, float time, RenderSettings settings)
     {
-        _effect.Parameters["TextureSize"]?.SetValue(new Vector2(source.Width, source.Height));
+        var device = spriteBatch.GraphicsDevice;
+        device.SetRenderTarget(null);
+        device.Clear(Color.Black);
+
+        if (!settings.PostProcessEnabled || _effect == null || _vertexBuffer == null)
+        {
+            Blit(spriteBatch, source);
+            return;
+        }
+
+        Apply(spriteBatch, source, time, settings);
+    }
+
+    private void Apply(SpriteBatch spriteBatch, RenderTarget2D source, float time, RenderSettings settings)
+    {
+        _effect!.Parameters["TextureSize"]?.SetValue(new Vector2(source.Width, source.Height));
         _effect.Parameters["Time"]?.SetValue(time);
         _effect.Parameters["BloomIntensity"]?.SetValue(settings.BloomIntensity);
         _effect.Parameters["NeonGlowIntensity"]?.SetValue(settings.NeonGlowIntensity);
@@ -32,8 +47,6 @@ public sealed class PostProcessEffect : IDisposable
         _effect.Parameters["SceneTexture"]?.SetValue(source);
 
         var device = spriteBatch.GraphicsDevice;
-        device.SetRenderTarget(null);
-        device.Clear(Color.Black);
         device.SetVertexBuffer(_vertexBuffer);
         device.RasterizerState = RasterizerState.CullNone;
         device.DepthStencilState = DepthStencilState.None;
@@ -45,6 +58,13 @@ public sealed class PostProcessEffect : IDisposable
             pass.Apply();
             device.DrawPrimitives(PrimitiveType.TriangleList, 0, 2);
         }
+    }
+
+    private static void Blit(SpriteBatch spriteBatch, Texture2D source)
+    {
+        spriteBatch.Begin(SpriteSortMode.Immediate, BlendState.Opaque, SamplerState.LinearClamp);
+        spriteBatch.Draw(source, spriteBatch.GraphicsDevice.Viewport.Bounds, Color.White);
+        spriteBatch.End();
     }
 
     private static VertexBuffer CreateFullscreenQuad(GraphicsDevice device)
@@ -66,6 +86,6 @@ public sealed class PostProcessEffect : IDisposable
 
     public void Dispose()
     {
-        _vertexBuffer.Dispose();
+        _vertexBuffer?.Dispose();
     }
 }

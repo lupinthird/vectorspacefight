@@ -1,6 +1,7 @@
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Content;
 using Microsoft.Xna.Framework.Graphics;
+using VectorSpaceFight.Config;
 using VectorSpaceFight.Game.Audio;
 using VectorSpaceFight.Game.Rendering;
 using VectorSpaceFight.Game.Shaders;
@@ -10,6 +11,7 @@ namespace VectorSpaceFight.Game;
 
 public class GameContext
 {
+    public required GameConfig Config { get; init; }
     public required GraphicsDevice GraphicsDevice { get; init; }
     public required ContentManager Content { get; init; }
     public required SpriteBatch SpriteBatch { get; init; }

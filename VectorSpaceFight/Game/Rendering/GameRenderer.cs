@@ -313,7 +313,7 @@ public class GameRenderer
 
     public void DrawShaderTuningHud(RenderSettings settings)
     {
-        if (settings.HudVisibleTimer <= 0f)
+        if (!settings.ShowShaderHud || settings.HudVisibleTimer <= 0f)
             return;
 
         _lineBatch.Begin();

@@ -1,3 +1,4 @@
+using VectorSpaceFight.Config;
 using VectorSpaceFight.Game.Constants;
 
 namespace VectorSpaceFight.Game.Rendering;
@@ -21,6 +22,9 @@ public sealed class RenderSettings
     public bool PhosphorMask { get; set; }
     public bool Vignette { get; set; }
     public bool FilmNoise { get; set; }
+
+    public bool PostProcessEnabled { get; set; } = true;
+    public bool ShowShaderHud { get; set; }
 
     public float LineIntensity { get; set; } = GameConstants.VectorLineIntensity;
     public float NeonTubeWidth { get; set; } = NeonDefaultTubeWidth;
@@ -48,6 +52,7 @@ public sealed class RenderSettings
 
     public void ApplyNeonDefaults()
     {
+        PostProcessEnabled = true;
         Bloom = false;
         BloomIntensity = GameConstants.BloomDefaultIntensity;
         NeonGlow = true;
@@ -74,6 +79,26 @@ public sealed class RenderSettings
         PhosphorMask = false;
         Vignette = false;
         FilmNoise = false;
+        PostProcessEnabled = false;
+    }
+
+    public void ApplyFromConfig(RenderingSettings config)
+    {
+        PostProcessEnabled = config.PostProcessEnabled;
+        ShowShaderHud = config.ShowShaderHud;
+        Bloom = config.Bloom;
+        BloomIntensity = config.BloomIntensity;
+        NeonGlow = config.NeonGlow;
+        NeonGlowIntensity = config.NeonGlowIntensity;
+        NeonCore = config.NeonCore;
+        NeonTubeExpand = config.NeonTubeExpand;
+        NeonTubes = config.NeonTubes;
+        Scanlines = config.Scanlines;
+        PhosphorMask = config.PhosphorMask;
+        Vignette = config.Vignette;
+        FilmNoise = config.FilmNoise;
+        LineIntensity = config.LineIntensity;
+        NeonTubeWidth = config.NeonTubeWidth;
     }
 
     public static float AsFlag(bool enabled) => enabled ? 1f : 0f;

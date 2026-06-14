@@ -24,6 +24,7 @@ public sealed class L3ControllerBindings
     private readonly float[] _slotActivityPulse = new float[MaxSlots];
 
     private string? _menuControllerDeviceId;
+    private readonly MenuExitHold _menuExitHold = new();
 
     public L3ControllerBindings()
     {
@@ -115,6 +116,7 @@ public sealed class L3ControllerBindings
     {
         _manager.ResetClaims();
         _menuControllerDeviceId = null;
+        _menuExitHold.Reset();
         Array.Clear(_playerAssignments, 0, _playerAssignments.Length);
         Array.Clear(_boundDeviceIds, 0, _boundDeviceIds.Length);
         Array.Clear(_lockedRotationAxis, 0, _lockedRotationAxis.Length);
@@ -201,6 +203,16 @@ public sealed class L3ControllerBindings
             return false;
 
         return WasFirePressed(menuController);
+    }
+
+    public bool TryConsumeMenuExitHold(float deltaSeconds, bool enabled)
+    {
+        TrackedController? menu = null;
+        if (enabled && _menuControllerDeviceId != null)
+            menu = _manager.FindById(_menuControllerDeviceId);
+
+        _menuExitHold.Update(menu, deltaSeconds, enabled);
+        return _menuExitHold.Triggered;
     }
 
     public bool WasAnyHumanButtonPressed(int buttonIndex)

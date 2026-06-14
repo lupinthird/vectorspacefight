@@ -1,0 +1,26 @@
+{
+  "display": {
+    "force60Hz": true,
+    "vsync": true,
+    "fullscreen": true,
+    "width": 0,
+    "height": 0
+  },
+  "rendering": {
+    "postProcessEnabled": false,
+    "showShaderHud": false,
+    "bloom": false,
+    "bloomIntensity": 0.2,
+    "neonGlow": false,
+    "neonGlowIntensity": 3.0,
+    "neonCore": false,
+    "neonTubeExpand": false,
+    "neonTubes": false,
+    "scanlines": false,
+    "phosphorMask": false,
+    "vignette": false,
+    "filmNoise": false,
+    "lineIntensity": 1.22,
+    "neonTubeWidth": 0.5
+  }
+}

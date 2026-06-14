@@ -32,6 +32,12 @@ public class MenuState : IGameState
         if (!_context.Input.CanStartGame())
             return;
 
+        if (_context.Input.TryConsumeMenuExitHold((float)gameTime.ElapsedGameTime.TotalSeconds, enabled: true))
+        {
+            _context.Game.Exit();
+            return;
+        }
+
         if (_context.Input.WasMenuConfirmPressed())
         {
             _context.Input.ApplyClaimsToSession(_context.Session);
@@ -46,7 +52,7 @@ public class MenuState : IGameState
         device.Clear(Color.Black);
 
         _context.Renderer.DrawMenu(_elapsedTime, _context.Input);
-        _context.PostProcess.Apply(_context.SpriteBatch, _context.SceneTarget, _elapsedTime, _context.RenderSettings);
+        _context.PostProcess.Present(_context.SpriteBatch, _context.SceneTarget, _elapsedTime, _context.RenderSettings);
         _context.Renderer.DrawShaderTuningHud(_context.RenderSettings);
     }
 }
