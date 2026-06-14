@@ -402,13 +402,13 @@ public sealed class L3ControllerBindings
         switch (kind)
         {
             case RotationAxisKind.SpinnerZ when tracked.Current.RawZ.HasValue:
-                tracked.SpinnerSource = tracked.RawController != null
+                tracked.SpinnerSource = tracked.PrefersRawGameControllerSource
                     ? SpinnerSourceKind.RawZ
                     : SpinnerSourceKind.JoystickZ;
                 break;
 
             case RotationAxisKind.PaddleRz when tracked.Current.RawRz.HasValue:
-                tracked.PaddleSource = tracked.RawController != null
+                tracked.PaddleSource = tracked.PrefersRawGameControllerSource
                     ? PaddleSourceKind.RawRz
                     : PaddleSourceKind.JoystickRz;
                 break;
