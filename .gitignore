@@ -6,7 +6,9 @@ obj/
 
 ## MonoGame
 *.mgcontent
-*.xnb
+*.mgstats
+Content/bin/
+Content/obj/
 
 ## IDE
 .vs/
