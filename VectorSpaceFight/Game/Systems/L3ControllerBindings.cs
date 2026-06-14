@@ -29,8 +29,7 @@ public sealed class L3ControllerBindings
     {
         _manager = new ControllerManager(maxSlots: MaxSlots);
 
-        if (OperatingSystem.IsWindows())
-            _manager.Initialize();
+        _manager.Initialize();
     }
 
     public int ClaimedCount => _manager.ClaimedCount;
@@ -128,9 +127,6 @@ public sealed class L3ControllerBindings
 
     public void Update(float deltaSeconds)
     {
-        if (!OperatingSystem.IsWindows())
-            return;
-
         _manager.Update(deltaSeconds);
         RefreshPlayerAssignments();
         TrackMenuController();
